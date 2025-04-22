@@ -1,5 +1,8 @@
 flask
 web3
+solana
 pandas
 numpy
 click
+ipykernel
+dotenv
