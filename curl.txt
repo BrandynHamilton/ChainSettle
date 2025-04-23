@@ -1,0 +1,4 @@
+curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http://127.0.0.1:5045/api/initiate_attestation
+curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"plaid\"}" http://127.0.0.1:5045/api/initiate_attestation
+curl -H "Content-Type: application/json" -X POST -d "{\"type\":\"github\", \"owner\":\"BrandynHamilton\", \"repo\":\"liquid_domains\", \"tag\":\"v1.0.0\", \"path\":\"static/onchain_valuation.js\", \"branch\":\"main\"}" http://127.0.0.1:5045/api/initiate_attestation
+

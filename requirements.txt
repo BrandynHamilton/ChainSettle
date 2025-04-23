@@ -1,4 +1,5 @@
 flask
+flask[async]
 web3
 solana
 pandas
