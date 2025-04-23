@@ -8,13 +8,13 @@ setup(
         "pandas",
         "numpy",
         "dotenv",
-        "flask",
+        "flask[async]",
         "web3"
     ],
     author="Brandyn Hamilton",
     author_email="brandynham1120@gmail.com",
     description="Python Library for ChainSettle Nodes.",
-    long_description=open("README.md").read(),
+    long_description=" ",
     long_description_content_type="text/markdown",
     url=" ",  
     classifiers=[
