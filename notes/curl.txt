@@ -2,3 +2,6 @@ curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http:
 curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"plaid\"}" http://127.0.0.1:5045/api/initiate_attestation
 curl -H "Content-Type: application/json" -X POST -d "{\"type\":\"github\", \"owner\":\"BrandynHamilton\", \"repo\":\"liquid_domains\", \"tag\":\"v1.0.0\", \"path\":\"static/onchain_valuation.js\", \"branch\":\"main\"}" http://127.0.0.1:5045/api/initiate_attestation
 
+curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/initiate_attestation
+
+curl http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/health

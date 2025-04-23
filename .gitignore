@@ -1,3 +1,8 @@
 .env
 chainsettle_env/
 *.ipynb
+*.egg-info
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
