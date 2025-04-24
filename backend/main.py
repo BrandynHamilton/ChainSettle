@@ -4,13 +4,14 @@ import json
 import datetime as dt
 from datetime import timedelta
 from dotenv import load_dotenv
-
+import time
+from plaid.exceptions import ApiException
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 
 from chainsettle import (create_link_token,create_plaid_client, github_tag_exists, github_file_exists,
-                         simulate_plaid_tx_and_get_access_token)
+                         simulate_plaid_tx_and_get_access_token,parse_date)
 
 load_dotenv()
 
@@ -117,9 +118,12 @@ def create_app():
         elif attestation_type == 'plaid':
             escrow_id = data.get("escrow_id")
             amount = data.get("amount")
-            reference = data.get("reference", escrow_id)  # Use escrow_id as default ref
-            start_date = data.get("start_date", str(dt.date.today() - dt.timedelta(days=2)))
-            end_date = data.get("end_date", str(dt.date.today()))
+            today = dt.date.today()
+            start_date = parse_date(data.get("start_date"), today - timedelta(days=3))
+            end_date = parse_date(data.get("end_date"), today)
+
+            print(f'start_date: {type(start_date)}')
+            print(f'end_date: {type(end_date)}')
 
             if not escrow_id or not amount:
                 return jsonify({"error": "Missing escrow_id or amount"}), 400
@@ -138,14 +142,24 @@ def create_app():
                 options=TransactionsGetRequestOptions()
             )
 
-            plaid_response = plaid_client.transactions_get(tx_request)
+            MAX_RETRIES = 3
+
+            for attempt in range(MAX_RETRIES):
+                try:
+                    plaid_response = plaid_client.transactions_get(tx_request)
+                    break
+                except ApiException as e:
+                    if "PRODUCT_NOT_READY" in str(e) and attempt < MAX_RETRIES - 1:
+                        time.sleep(2)  # wait before retry
+                    else:
+                        raise
             transactions = plaid_response["transactions"]
 
             for tx in transactions:
                 tx_amt = float(tx["amount"])
                 tx_name = tx.get("name", "")
 
-                if abs(tx_amt - float(amount)) < 0.01 and reference.lower() in tx_name.lower():
+                if abs(tx_amt - float(amount)) < 0.01 and escrow_id.lower() in tx_name.lower():
                     return jsonify({
                         "status": "confirmed",
                         "transaction_id": tx["transaction_id"],

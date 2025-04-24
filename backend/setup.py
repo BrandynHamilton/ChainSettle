@@ -9,7 +9,8 @@ setup(
         "numpy",
         "dotenv",
         "flask[async]",
-        "web3"
+        "web3",
+        "plaid-python"
     ],
     author="Brandyn Hamilton",
     author_email="brandynham1120@gmail.com",

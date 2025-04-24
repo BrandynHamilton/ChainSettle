@@ -40,13 +40,12 @@ def seller_init(escrow_id):
 @click.option('--type', required=True, type=click.Choice(['plaid', 'github']), help='Type of attestation')
 @click.option('--escrow-id', required=False, help='Escrow ID (required for plaid)')
 @click.option('--amount', required=False, type=float, help='Expected transfer amount (plaid only)')
-@click.option('--reference', required=False, help='Transaction memo or reference (plaid only)')
 @click.option('--owner', required=False, help='GitHub repo owner (github only)')
 @click.option('--repo', required=False, help='GitHub repo name (github only)')
 @click.option('--tag', required=False, help='GitHub release tag (github only)')
 @click.option('--path', required=False, help='Path to file to verify (github only)')
 @click.option('--branch', default='main', help='GitHub branch (optional, default is main)')
-def attest(type, escrow_id, amount, reference, owner, repo, tag, path, branch):
+def attest(type, escrow_id, amount, owner, repo, tag, path, branch):
     """
     Submit attestation request (plaid or github).
     """
@@ -61,7 +60,6 @@ def attest(type, escrow_id, amount, reference, owner, repo, tag, path, branch):
         payload.update({
             "escrow_id": escrow_id,
             "amount": amount,
-            "reference": reference or escrow_id,
             "start_date": str(today - dt.timedelta(days=3)),
             "end_date": str(today)
         })

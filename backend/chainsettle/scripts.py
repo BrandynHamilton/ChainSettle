@@ -73,17 +73,22 @@ def generate_custom_sandbox_tx(amount, escrow_id, date=None):
     if not date:
         date = dt.date.today().isoformat()
 
+    # Optional: simulate 1-day lag between transaction and posting
+    date_posted = dt.datetime.fromisoformat(date) + timedelta(days=1)
+    date_posted = date_posted.date().isoformat()
+
     return {
-        "version": "2",
         "override_accounts": [
             {
                 "type": "depository",
                 "subtype": "checking",
                 "transactions": [
                     {
-                        "date": date,
+                        "date_transacted": date,
+                        "date_posted": date_posted,
                         "amount": amount,
-                        "description": f"Escrow {escrow_id} payment"
+                        "description": f"Escrow {escrow_id} payment",
+                        "currency": "USD"
                     }
                 ]
             }
@@ -96,6 +101,11 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
     config_dict = generate_custom_sandbox_tx(amount, escrow_id)
     config_str = json.dumps(config_dict)  # Still needs to be stringified
 
+    print(f'config: {config_str}')
+
+    print("client_id:", PLAID_CLIENT_ID)
+    print("secret:", PLAID_SANDBOX_KEY)
+
     payload = {
         "client_id": PLAID_CLIENT_ID,
         "secret": PLAID_SANDBOX_KEY,
@@ -103,13 +113,15 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
         "initial_products": ["transactions"],
         "options": {
             "override_username": "user_custom",
-            "override_password": config_str
+            "override_password": config_str,
         }
     }
 
     print("Sending payload to Plaid sandbox:", json.dumps(payload, indent=2))
 
     res = requests.post(url, json=payload)
+
+    print(f'res: {res}')
 
     if not res.ok:
         print("Plaid error response:")
@@ -138,3 +150,11 @@ def github_file_exists(owner: str, repo: str, path: str, branch="main") -> bool:
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}"
     response = requests.get(url)
     return response.status_code == 200
+
+def parse_date(value, fallback):
+    if isinstance(value, str):
+        return dt.datetime.fromisoformat(value).date()
+    elif isinstance(value, dt.date):
+        return value
+    else:
+        return fallback
