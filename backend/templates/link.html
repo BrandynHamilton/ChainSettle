@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ChainSettle - Link Your Bank</title>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  </head>
+  <body>
+    <h2>Link your bank account</h2>
+    <button id="link-button">Connect Bank via Plaid</button>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const linkToken = urlParams.get("token");
+      const escrow_id = urlParams.get('escrow_id')
+
+      if (!linkToken) {
+        alert("Missing link token");
+        throw new Error("Missing link token in URL");
+      }
+
+      const handler = Plaid.create({
+        token: linkToken,
+        onSuccess: function(public_token, metadata) {
+          fetch("/api/exchange_token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              public_token: public_token,
+              escrow_id: escrow_id
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            alert("Account linked!");
+          });
+        },
+        onExit: function(err, metadata) {
+          console.log("User exited Plaid Link", err, metadata);
+        }
+      });
+
+      document.getElementById("link-button").onclick = function() {
+        handler.open();
+      };
+    </script>
+  </body>
+</html>
