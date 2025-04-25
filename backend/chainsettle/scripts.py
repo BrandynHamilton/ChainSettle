@@ -73,7 +73,7 @@ def generate_custom_sandbox_tx(amount, escrow_id, date=None):
     if not date:
         date = dt.date.today().isoformat()
 
-    # Optional: simulate 1-day lag between transaction and posting
+    # Simulate 1-day lag between transaction and posting
     date_posted = dt.datetime.fromisoformat(date) + timedelta(days=1)
     date_posted = date_posted.date().isoformat()
 
@@ -101,11 +101,6 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
     config_dict = generate_custom_sandbox_tx(amount, escrow_id)
     config_str = json.dumps(config_dict)  # Still needs to be stringified
 
-    print(f'config: {config_str}')
-
-    print("client_id:", PLAID_CLIENT_ID)
-    print("secret:", PLAID_SANDBOX_KEY)
-
     payload = {
         "client_id": PLAID_CLIENT_ID,
         "secret": PLAID_SANDBOX_KEY,
@@ -117,11 +112,7 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
         }
     }
 
-    print("Sending payload to Plaid sandbox:", json.dumps(payload, indent=2))
-
     res = requests.post(url, json=payload)
-
-    print(f'res: {res}')
 
     if not res.ok:
         print("Plaid error response:")
@@ -130,6 +121,8 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
         except:
             print(res.text)
         res.raise_for_status()
+
+    print(f'res.json():{res.json()}')
 
     public_token = res.json()["public_token"]
     exchange_request = ItemPublicTokenExchangeRequest(public_token=public_token)

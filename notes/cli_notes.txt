@@ -1,0 +1,20 @@
+# Request Init Commands
+
+python cli.py init-attest --type github --escrow-id 567 --network ethereum
+
+python cli.py init-attest --type plaid --escrow-id 567 --network ethereum
+
+python cli.py init-attest --type plaid --escrow-id 123 --network ethereum
+
+Bank: First Platypus Bank 
+username: user_good
+password: pass_good
+
+# Attest Commands
+
+for plaid
+python cli.py attest --type plaid --escrow-id 123 --amount 2000
+
+for github
+python cli.py attest --type github --escrow-id 567 --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js
+

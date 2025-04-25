@@ -12,6 +12,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       const linkToken = urlParams.get("token");
       const escrow_id = urlParams.get('escrow_id')
+      const network = urlParams.get('network')
 
       if (!linkToken) {
         alert("Missing link token");
@@ -26,7 +27,8 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               public_token: public_token,
-              escrow_id: escrow_id
+              escrow_id: escrow_id,
+              network: network
             })
           })
           .then(res => res.json())

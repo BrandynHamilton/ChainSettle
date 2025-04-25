@@ -1,9 +1,9 @@
 flask
 flask[async]
 web3
-solana
 pandas
 numpy
 click
 ipykernel
 dotenv
+plaid-python

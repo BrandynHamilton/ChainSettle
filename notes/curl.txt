@@ -7,3 +7,6 @@ curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http:
 curl http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/health
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/create_link_token
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/escrows
+
