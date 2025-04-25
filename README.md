@@ -49,7 +49,7 @@ Note: `dotenv` does not automatically load `.env.sample`. You must manually rena
 
 ## Using the CLI
 
-### init-attest: Initialize an escrow and optionally link a bank account
+### init-attest: Initialize an attestation and optionally link a bank account
 
 ```bash
 python cli.py init-attest --type plaid --escrow-id test123 --network ethereum
