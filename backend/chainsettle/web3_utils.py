@@ -32,8 +32,8 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, escrow_i
     base_tx = settlement_registry_obj.functions.attest(
         escrow_id,
         status_enum,
-        amount_scaled,
-        details
+        details,
+        amount_scaled
     ).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),

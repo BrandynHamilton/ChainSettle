@@ -12,14 +12,14 @@
 				"type": "uint8"
 			},
 			{
+				"internalType": "string",
+				"name": "metadata",
+				"type": "string"
+			},
+			{
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "details",
-				"type": "string"
 			}
 		],
 		"name": "attest",
@@ -49,48 +49,19 @@
 			},
 			{
 				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
+				"internalType": "string",
+				"name": "metadata",
+				"type": "string"
 			},
 			{
 				"indexed": false,
-				"internalType": "string",
-				"name": "details",
-				"type": "string"
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
 			}
 		],
 		"name": "Attested",
 		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"name": "attestations",
-		"outputs": [
-			{
-				"internalType": "enum SettlementRegistry.Status",
-				"name": "status",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "details",
-				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
 	},
 	{
 		"inputs": [],
@@ -100,6 +71,40 @@
 				"internalType": "address",
 				"name": "",
 				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"name": "settlements",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "escrowId",
+				"type": "string"
+			},
+			{
+				"internalType": "enum SettlementRegistry.Status",
+				"name": "status",
+				"type": "uint8"
+			},
+			{
+				"internalType": "string",
+				"name": "metadata",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",

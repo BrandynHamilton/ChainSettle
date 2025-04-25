@@ -6,3 +6,4 @@ chainsettle_env/
 __pycache__/
 *.pyo
 *.pyd
+notes/deploy.txt
