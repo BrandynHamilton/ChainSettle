@@ -1,8 +1,8 @@
 # ChainSettle CLI
 
-ChainSettle is a Web3 oracle system that verifies **off-chain actions** (like wire transfers, GitHub milestones, or document signings) and **attests them on-chain**, enabling trust-minimized settlement for digital goods, DAO payouts, escrow, and more.
+ChainSettle is a Web3 oracle system deployed on the Akash network that verifies **off-chain actions** (like wire transfers or GitHub milestones) and **attests them on-chain**, enabling credible trust-minimized settlement for digital goods, DAO payouts, escrow, and more.
 
-ChainSettle es un oráculo Web3 que permite verificar acciones fuera de la cadena—como pagos bancarios, commits en GitHub o firmas digitales—y confirmarlas en la blockchain, activando flujos de trabajo descentralizados.
+ChainSettle es un oráculo Web3 que permite verificar acciones fuera de la cadena (como pagos bancarios o commits en GitHub) y confirmarlas en la blockchain, activando flujos de trabajo descentralizados.
 
 ---
 
@@ -19,7 +19,7 @@ ChainSettle es un oráculo Web3 que permite verificar acciones fuera de la caden
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/chainsettle
+git clone https://github.com/BrandynHamilton/chainsettle
 cd chainsettle
 ```
 
@@ -75,19 +75,19 @@ Once the action is verified (transaction or GitHub tag/file), ChainSettle posts 
 
 ## How It Works
 
-1. You initialize an escrow using `init-attest`.
+1. You initialize an escrow using `init-attest` and include a unique escrow ID.
 2. You perform the off-chain action (e.g., bank transfer, code push).
-3. You run `attest` to trigger verification and onchain logging.
+3. You run `attest` with the unique escrow ID to trigger verification and onchain logging.
 
-ChainSettle will automatically detect the event (via Plaid or GitHub API), and send a signed onchain transaction to the configured settlement registry.
+ChainSettle will automatically detect the event (via Plaid or GitHub API), and send a signed onchain transaction to the configured settlement registry.  The Settlement Registry can then be queried with the unique escrow ID.  
 
 Example commands can be found in notes/cli_notes.txt
 
 ### Test Credentials for the Plaid Interface:
 
-Bank: First Platypus Bank 
-username: user_good
-password: pass_good
+- Bank: First Platypus Bank 
+- username: user_good
+- password: pass_good
 
 ---
 
@@ -96,13 +96,13 @@ password: pass_good
 - Python (Click, dotenv, requests)
 - ChainSettle backend (Flask on Akash)
 - Plaid Sandbox and GitHub API
-- Smart contracts deployed to Sepolia testnet
+- Ethereum smart contract deployed to Sepolia testnet
 
 ---
 
 ## Deployments
 
-- Settlement Registry (Sepolia Ethereum): 0x8924aa4F75634Cd3c53258C5C998A137FE170b4b
+- Settlement Registry (Sepolia Ethereum): 0x3B021184e2E1D05A45480b2AA0A8fbD625a058A6
 
 ---
 
