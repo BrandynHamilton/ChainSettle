@@ -1,0 +1,3 @@
+python arlocal.py fund --amount 500
+python arlocal.py fund --address SOME_ADDRESS
+python arlocal.py post-data --data test

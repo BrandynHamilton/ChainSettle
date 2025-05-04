@@ -1,0 +1,11 @@
+python paypal_test.py paypal-test --settlement-id 1 --recipient-email sb-z4yxe40982203@business.example.com --amount 2000
+
+#Test Credentials for paypal
+
+##Business
+sb-z4yxe40982203@business.example.com
+R$3/:78z
+
+##Personal
+sb-w7oqu40942591@personal.example.com
+1eh)_t_N

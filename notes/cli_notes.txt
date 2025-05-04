@@ -1,9 +1,14 @@
 # Request Init Commands
 
-python cli.py init-attest --type plaid --escrow-id 1858 --network ethereum
+python cli.py init-attest --settlement-type plaid --settlement-id a1szssd9ss45 --amount 250000 --network ethereum --metadata test --notify-email brandynhamilton@gmail.com --local
 
+python cli.py init-attest --settlement-type github --settlement-id Pxas8955s75 --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
 
-python cli.py init-attest --type github --escrow-id 567 --network ethereum
+python cli.py init-attest --type github --settlement-id d56assfs59ssddd53gbfdsgfdes --network blockdag --metadata first_edition --local
+
+python cli.py init-attest --type plaid --settlement-id Pxas895575 --amount 150000  --metadata P2P_Trade --local --network blockdag
+
+python cli.py init-attest --settlement-type paypal --settlement-id asu4aas4f4sasPxas895575 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --local --network blockdag
 
 # Test Credentials for Plaid 
 
@@ -11,11 +16,17 @@ Bank: First Platypus Bank
 username: user_good
 password: pass_good
 
+#Test Credentials for paypal
+
+sb-z4yxe40982203@business.example.com
+R$3/:78z
+
 # Attest Commands
 
 for plaid
-python cli.py attest --type plaid --escrow-id 1858 --amount 2000
+python cli.py attest --settlement-id asu4aas4f4sasPxas895575 --metadata RWA09234 --local
 
 for github
-python cli.py attest --type github --escrow-id 567 --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js
+python cli.py attest --settlement-id 5a5ssfaadd56ssds5sassadagssdsadss5ds5s --local
 
+for paypal

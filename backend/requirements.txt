@@ -7,3 +7,5 @@ click
 ipykernel
 dotenv
 plaid-python
+arweave-python-client
+paypal-server-sdk==1.0.0

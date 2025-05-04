@@ -1,3 +1,4 @@
+from logging import raiseExceptions
 import click
 import requests
 import webbrowser
@@ -7,110 +8,191 @@ import datetime as dt
 from datetime import timedelta
 from dotenv import load_dotenv
 
+import time
+
+from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS
+
 load_dotenv()
 
-BACKEND_URL = os.getenv('BACKEND_URL', "http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/") # Defaults to my Akash node 
+BACKEND_URL = os.getenv('BACKEND_URL', "http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/") # Defaults to main Akash node 
+LOCAL_URL = os.getenv('LOCAL_URL')
+
+def poll_for_settlement(settlement_id, max_retries=20, poll_interval=10):
+    print(f"Waiting for settlement {settlement_id} to be initialized onchain...")
+
+    for attempt in range(max_retries):
+        try:
+            res = requests.get(f"{BACKEND_URL}/api/get_settlement/{settlement_id}")
+            res.raise_for_status()
+            data = res.json()
+            tx_hash = data.get("tx_hash")
+
+            if tx_hash:
+                click.echo(f"Settlement {settlement_id} initialized!")
+                click.echo(f"Explorer URL: {data.get('tx_url')}")
+                return
+        except Exception as e:
+            pass  
+
+        time.sleep(poll_interval)
+
+    click.echo(f"Timed out waiting for {settlement_id} settlement.")
 
 @click.group()
 def cli():
     pass
 
 @cli.command()
-@click.option('--type', required=True, type=click.Choice(['plaid', 'github']), help='Type of attestation')
-@click.option('--escrow-id', required=True, help='Escrow ID associated with the NFT sale')
-@click.option('--network', required=True, type=click.Choice(['ethereum', 'arbitrum', 'optimism']), help="Target chain")
-def init_attest(type, escrow_id, network):
-    """
-    Initializes the Plaid Link flow for a seller. Generates a link_token and opens a browser page.
-    """
-
-    res = requests.get(f"{BACKEND_URL}/api/escrows")
-    escrow_ids = res.json().get("escrow_ids", [])
-
-    if escrow_id in escrow_ids:
-        click.echo(f"Escrow ID '{escrow_id}' already exists. Choose a new one.")
-        return
-
-    if type == "plaid":
-        try:
-            res = requests.get(f"{BACKEND_URL}/api/create_link_token")
-            res.raise_for_status()
-            link_token = res.json()["link_token"]
-
-            link_url = f"{BACKEND_URL}/link?token={link_token}&escrow_id={escrow_id}&network={network}"
-            click.echo(f"Link token created. Open the following URL to link your bank account:\n{link_url}")
-
-            if click.confirm("Open in browser now?", default=True):
-                webbrowser.open(link_url)
-
-        except Exception as e:
-            click.echo(f"Failed to generate link token: {e}")
-    
-    elif type == 'github':
-        try:
-            res = requests.post(f"{BACKEND_URL}/api/register_escrow", json={
-                "escrow_id": escrow_id,
-                "network": network,
-                "type": type
-            })
-            res.raise_for_status()
-            click.echo(f"Escrow {escrow_id} registered on {network}.")
-        except requests.RequestException as e:
-            try:
-                err = e.response.json().get("error") or e.response.text
-            except:
-                err = str(e)
-            click.echo(f"Failed to register escrow: {err}")
-            return
-
-@cli.command()
-@click.option('--type', required=True, type=click.Choice(['plaid', 'github']), help='Type of attestation')
-@click.option('--escrow-id', required=False, help='Escrow ID (required for plaid)')
-@click.option('--amount', required=False, type=float, help='Expected transfer amount (plaid only)')
+@click.option('--settlement-type', required=True, type=click.Choice(SUPPORTED_APIS), help='Type of attestation')
+@click.option('--settlement-id', required=True, help='Settlement ID associated with the NFT sale')
+@click.option('--amount', required=False, type=float, help='Expected transfer amount, expected for Plaid type')
+@click.option('--network', required=True, type=click.Choice(SUPPORTED_NETWORKS), help="Target chain")
 @click.option('--owner', required=False, help='GitHub repo owner (github only)')
 @click.option('--repo', required=False, help='GitHub repo name (github only)')
 @click.option('--tag', required=False, help='GitHub release tag (github only)')
 @click.option('--path', required=False, help='Path to file to verify (github only)')
 @click.option('--branch', default='main', help='GitHub branch (optional, default is main)')
-def attest(type, escrow_id, amount, owner, repo, tag, path, branch):
+@click.option('--metadata', required=False, type=str, help='Any metadata or uri to post onchain')
+@click.option('--recipient-email', default=None, help='Email to notify.')
+@click.option('--notify-email', default=None, help='Email to notify.')
+@click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
+def init_attest(settlement_type, settlement_id, amount, network, owner, repo, tag, path, branch, metadata, recipient_email, notify_email, local):
+    """
+    Initializes the Plaid Link flow for a seller. Generates a link_token and opens a browser page.
+    """
+
+    global BACKEND_URL
+
+    if local:
+        BACKEND_URL = LOCAL_URL or "http://localhost:5045"
+
+    print(f'Using backend URL: {BACKEND_URL}')
+
+    res = requests.get(f"{BACKEND_URL}/api/settlements")
+    settlement_ids = res.json().get("settlement_ids", [])
+
+    if metadata is None:
+        metadata = ""
+
+    if settlement_id in settlement_ids:
+        click.echo(f"Settlement ID '{settlement_id}' already exists. Choose a new one.")
+        return
+
+    if settlement_type == "plaid":
+        if amount is None:
+            raise click.UsageError("Must pass value for amount")
+        try:
+            res = requests.get(f"{BACKEND_URL}/api/create_link_token")
+            res.raise_for_status()
+            link_token = res.json()["link_token"]
+
+            link_url = f"{BACKEND_URL}/plaid?token={link_token}&settlement_type={settlement_type}&settlement_id={settlement_id}&amount={amount}&network={network}&metadata={metadata}&notify_email={notify_email}"
+            click.echo(f"Link token created. Open the following URL to link your bank account:\n{link_url}")
+
+            if click.confirm("Open in browser now?", default=True):
+                webbrowser.open(link_url)
+
+            if click.confirm("Wait for onchain confirmation?", default=True):
+                poll_for_settlement(settlement_id)
+
+        except Exception as e:
+            click.echo(f"Failed to generate link token: {e}")
+    
+    elif settlement_type == 'paypal':
+        if not all ([recipient_email, settlement_id, amount]):
+            raise click.UsageError("PayPal attestation requires --recipient-email and --settlement_id")
+
+        try:
+            res = requests.post(f"{BACKEND_URL}/api/register_settlement", json={
+                "recipient_email": recipient_email,
+                "amount": amount,
+                "settlement_id": settlement_id,
+                "network": network,
+                "settlement_type": settlement_type,
+                "metadata":metadata,
+                "notify_email": notify_email
+            })
+            res.raise_for_status()
+            settlement_info = res.json()["settlement_info"]
+            click.echo(f"Settlement {settlement_id} registered on {network}.\nSettlement Info: {json.dumps(settlement_info,indent=2)}")
+        except requests.RequestException as e:
+            try:
+                err = e.response.json().get("error") or e.response.text
+            except:
+                err = str(e)
+            click.echo(f"Failed to register settlement: {err}")
+            return
+    
+    elif settlement_type == 'github':
+        if not all([owner, repo, tag, path]):
+            raise click.UsageError("GitHub attestation requires --owner, --repo, --tag, and --path")
+         
+        try:
+            res = requests.post(f"{BACKEND_URL}/api/register_settlement", json={
+                "owner": owner,
+                "repo": repo,
+                "tag": tag,
+                "path": path,
+                "branch": branch,
+                "settlement_id": settlement_id,
+                "network": network,
+                "settlement_type": settlement_type,
+                "metadata":metadata,
+                "notify_email": notify_email
+            })
+            res.raise_for_status()
+            settlement_info = res.json()["settlement_info"]
+            click.echo(f"Settlement {settlement_id} registered on {network}.\nSettlement Info: {json.dumps(settlement_info,indent=2)}")
+        except requests.RequestException as e:
+            try:
+                err = e.response.json().get("error") or e.response.text
+            except:
+                err = str(e)
+            click.echo(f"Failed to register settlement: {err}")
+            return
+
+@cli.command()
+@click.option('--settlement-id', required=True, help='Settlement ID')
+@click.option('--metadata', required=False, type=str, help='Any metadata or uri to post onchain')
+@click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
+def attest(settlement_id, metadata, local):
     """
     Submit attestation request (plaid or github).
     """
-    payload = {"type": type}
 
-    if type == "plaid":
-        if not escrow_id or not amount:
-            click.echo("escrow-id and amount are required for plaid attestation")
-            return
+    global BACKEND_URL
 
-        today = dt.date.today()
-        payload.update({
-            "escrow_id": escrow_id,
-            "amount": amount,
-            "start_date": str(today - dt.timedelta(days=3)),
-            "end_date": str(today)
-        })
+    if local:
+        BACKEND_URL = LOCAL_URL or "http://localhost:5045"
 
-    elif type == "github":
-        if not (owner and repo and tag and path and escrow_id):
-            click.echo("owner, repo, tag, and path are required for github attestation")
-            return
+    payload = {}
 
-        payload.update({
-            "owner": owner,
-            "repo": repo,
-            "tag": tag,
-            "path": path,
-            "branch": branch,
-            "escrow_id":escrow_id
-        })
+    if metadata is None:
+        metadata = ""
+
+    today = dt.date.today()
+    payload.update({
+        "settlement_id": settlement_id,
+        "start_date": str(today - dt.timedelta(days=3)), # Default to 3 days ago
+        "end_date": str(today),
+        "metadata": metadata
+    })
 
     try:
         res = requests.post(f"{BACKEND_URL}/api/initiate_attestation", json=payload)
         res.raise_for_status()
         data = res.json()
 
+        if 'status' not in data or data['status'] != 'confirmed':
+            click.echo("Unexpected response from backend. Settlement may not be valid or pending further action.")
+
         click.echo(json.dumps(data, indent=2))
+
+        if 'approval_url' in data:
+            click.echo(f"Approval URL: {data['approval_url']}")
+            if click.confirm("Open in browser now?", default=True):
+                webbrowser.open(data['approval_url'])
+
     except requests.exceptions.RequestException as e:
         if e.response is not None:
             try:

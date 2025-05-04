@@ -11,8 +11,12 @@
     <script>
       const urlParams = new URLSearchParams(window.location.search);
       const linkToken = urlParams.get("token");
-      const escrow_id = urlParams.get('escrow_id')
+      const settlement_type = urlParams.get("settlement_type");
+      const settlement_id = urlParams.get('settlement_id')
       const network = urlParams.get('network')
+      const u_metadata = urlParams.get('metadata')
+      const amount = urlParams.get('amount')
+      const notify_email = urlParams.get('notify_email')
 
       if (!linkToken) {
         alert("Missing link token");
@@ -22,13 +26,17 @@
       const handler = Plaid.create({
         token: linkToken,
         onSuccess: function(public_token, metadata) {
-          fetch("/api/exchange_token", {
+          fetch("/api/register_settlement", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               public_token: public_token,
-              escrow_id: escrow_id,
-              network: network
+              settlement_type: settlement_type,
+              settlement_id: settlement_id,
+              network: network,
+              metadata:u_metadata,
+              amount:amount,
+              notify_email:notify_email
             })
           })
           .then(res => res.json())

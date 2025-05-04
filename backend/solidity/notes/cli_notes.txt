@@ -1,0 +1,42 @@
+python deploy.py --contract SettlementRegistry --network ethereum --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
+
+python deploy.py --contract SettlementRegistry --network blockdag --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
+
+python deploy.py --contract ValidatorRegistry --network ethereum --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
+
+python deploy.py --contract ValidatorRegistry --network blockdag --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
+
+python add_validator.py --new_validator_address 0x6fbc41ea9cff9f1c2dcc8f61e190623d0b1cd7b3 --network ethereum 
+
+python add_validator.py --new_validator_address 0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3 --network blockdag 
+
+python add_validator.py --new_validator_address 0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3 --network ethereum 
+
+python add_validator.py --list_validators --network all
+
+python add_validator.py --new_validator_address 0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3 --network all
+
+python add_validator.py --new_validator_address 0x00Fc010339a338e00F77ce4fe8915675dCd476E9 --network all
+
+python add_validator.py --new_validator_address None --network all
+
+python deploy.py --nodes 0 --allowlist allowlist.csv
+
+python deploy.py --allowlist allowlist.csv
+
+# Uses keystore @ specific account 
+python validator.py listen --network all --account 0x00Fc010339a338e00F77ce4fe8915675dCd476E9
+password - 123
+
+python validator.py listen --network all --account 0x00Fc010339a338e00F77ce4fe8915675dCd476E9
+
+
+# Uses ENV Private Key
+python validator.py listen --network blockdag --new-wallet
+
+python deploy_contract.py --contract Faucet.sol --network blockdag --save-env-key-base FAUCET_ADDRESS --constructor-args bdag_faucet_args.json --config-keyword faucet
+
+python deploy_contract.py --contract Faucet.sol --network ethereum --save-env-key-base FAUCET_ADDRESS --constructor-args eth_faucet_args.json --config-keyword faucet
+
+
+

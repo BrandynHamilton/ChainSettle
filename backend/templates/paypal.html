@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 80px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .message {
+            background: white;
+            display: inline-block;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2.success { color: #28a745; }
+        h2.error { color: #dc3545; }
+        .small {
+            font-size: 0.9em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="message">
+        {% if error %}
+            <h2 class="error">❌ Payment Error</h2>
+            <p>{{ error }}</p>
+        {% elif capture_id %}
+            <h2 class="success">✅ Payment Successful!</h2>
+            <p><strong>Order ID:</strong> {{ order_id }}</p>
+            <p><strong>Capture ID:</strong> {{ capture_id }}</p>
+            <p class="small">You can safely close this window.</p>
+            <script>alert("Thank you for completing the payment!");</script>
+        {% else %}
+            <h2>⏳ Payment Processing</h2>
+            <p>Please wait while we confirm your payment.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

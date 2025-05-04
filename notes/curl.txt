@@ -8,5 +8,29 @@ curl -H "Content-Type: application/json" -X GET http://fsoh913eg59c590vufv3qkhod
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/create_link_token
 
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/a5a5ssfaadd56ssds5sassadagssdsadss5ds5s"
+
 curl -H "Content-Type: application/json" -X GET http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/escrows
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/settlements
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/validator_list
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/settlement_types
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/health
+
+
+python cli.py init-attest --type plaid --settlement-id 598 --amount 100 --metadata test2 --local --network ethereum
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/598"
+
+curl "http://127.0.0.1:5045/api/attest/paypal-callback?token=2Y57138742264934M"
+
+curl -X POST http://localhost:5045/api/clear_settlement_cache
+
+curl -H "Content-Type: application/json" -X POST -d "{\"address\": \"0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3\", \"network\":\"blockdag\"}" http://127.0.0.1:5000/faucet
+curl "http://127.0.0.1:5000/faucet_balance?network=blockdag"
+
+
 

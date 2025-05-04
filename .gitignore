@@ -7,4 +7,5 @@ __pycache__/
 *.pyo
 *.pyd
 notes/deploy.txt
-backend/escrows
+backend/settlements
+backend/arweave/arweave_keyfile.json

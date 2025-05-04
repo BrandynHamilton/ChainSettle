@@ -1,13 +1,6 @@
-import requests
-import time
-import os 
-import datetime as dt
-from datetime import timedelta
-import time
-from dotenv import load_dotenv, set_key
-import json
-
 import plaid
+from plaid.model.transactions_get_request import TransactionsGetRequest
+from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -16,6 +9,14 @@ from plaid.model.sandbox_public_token_create_request_options import SandboxPubli
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
+
+import requests
+import time
+import os
+import json
+from dotenv import load_dotenv, set_key
+import datetime as dt
+from datetime import timedelta
 
 load_dotenv()
 
@@ -69,7 +70,7 @@ def create_link_token():
 
     return link_token
 
-def generate_custom_sandbox_tx(amount, escrow_id, date=None):
+def generate_custom_sandbox_tx(amount, settlement_id, date=None):
     if not date:
         date = dt.date.today().isoformat()
 
@@ -87,7 +88,7 @@ def generate_custom_sandbox_tx(amount, escrow_id, date=None):
                         "date_transacted": date,
                         "date_posted": date_posted,
                         "amount": amount,
-                        "description": f"Escrow {escrow_id} payment",
+                        "description": f"settlement {settlement_id} payment",
                         "currency": "USD"
                     }
                 ]
@@ -95,11 +96,11 @@ def generate_custom_sandbox_tx(amount, escrow_id, date=None):
         ]
     }
 
-def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
+def simulate_plaid_tx_and_get_access_token(client, amount, settlement_id):
     url = "https://sandbox.plaid.com/sandbox/public_token/create"
 
-    config_dict = generate_custom_sandbox_tx(amount, escrow_id)
-    config_str = json.dumps(config_dict)  # Still needs to be stringified
+    config_dict = generate_custom_sandbox_tx(amount, settlement_id)
+    config_str = json.dumps(config_dict) 
 
     payload = {
         "client_id": PLAID_CLIENT_ID,
@@ -122,32 +123,47 @@ def simulate_plaid_tx_and_get_access_token(client, amount, escrow_id):
             print(res.text)
         res.raise_for_status()
 
-    print(f'res.json():{res.json()}')
-
     public_token = res.json()["public_token"]
     exchange_request = ItemPublicTokenExchangeRequest(public_token=public_token)
     exchange_response = client.item_public_token_exchange(exchange_request)
     return exchange_response["access_token"]
 
-#Github attestation helper functions
-def github_tag_exists(owner: str, repo: str, tag: str) -> bool:
-    url = f"https://api.github.com/repos/{owner}/{repo}/tags"
-    headers = {"Accept": "application/vnd.github+json"}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        tags = [t["name"] for t in response.json()]
-        return tag in tags
-    return False
+def wait_for_transaction_settlement(plaid_client, access_token, settlement_id, amount, 
+                                    start_date, end_date, max_retries=2, poll_interval=15):
 
-def github_file_exists(owner: str, repo: str, path: str, branch="main") -> bool:
-    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}"
-    response = requests.get(url)
-    return response.status_code == 200
+    tx_request = TransactionsGetRequest(
+        access_token=access_token,
+        start_date=start_date,
+        end_date=end_date,
+        options=TransactionsGetRequestOptions()
+    )
 
-def parse_date(value, fallback):
-    if isinstance(value, str):
-        return dt.datetime.fromisoformat(value).date()
-    elif isinstance(value, dt.date):
-        return value
-    else:
-        return fallback
+    time.sleep(5)
+
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            plaid_response = plaid_client.transactions_get(tx_request)
+            transactions = plaid_response["transactions"]
+        except Exception as e:
+            print(f"Error fetching transactions: {e}")
+            transactions = []
+
+        for tx in transactions:
+            tx_amt = float(tx.get("amount", 0))
+            tx_name = tx.get("name", "")
+            pending = tx.get("pending", False)
+
+            if abs(tx_amt - float(amount)) < 0.01 and settlement_id.lower() in tx_name.lower():
+                print(f"Found transaction: {tx_name} for amount {tx_amt} (pending: {pending})\n{tx}")
+                if not pending:
+                    print(f"Settled transaction found at attempt {attempt}")
+                    return tx
+                else:
+                    print(f"Matching transaction is still pending (attempt {attempt})")
+
+        attempt += 1
+        time.sleep(poll_interval)
+
+    print(f"Max retries reached. No settled transaction found.")
+    return 
