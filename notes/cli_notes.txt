@@ -2,9 +2,9 @@
 
 python cli.py init-attest --settlement-type plaid --settlement-id a1szssd9ss45 --amount 250000 --network ethereum --metadata test --notify-email brandynhamilton@gmail.com --local
 
-python cli.py init-attest --settlement-type github --settlement-id Pxas8955s75 --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
+python cli.py init-attest --settlement-type github --settlement-id ad3dfaPxas8955s75 --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
 
-python cli.py init-attest --type github --settlement-id d56assfs59ssddd53gbfdsgfdes --network blockdag --metadata first_edition --local
+python cli.py init-attest --settlement-type github --settlement-id d56assfs59ssddds53gbfdsgfdes --network blockdag --metadata first_edition --local
 
 python cli.py init-attest --type plaid --settlement-id Pxas895575 --amount 150000  --metadata P2P_Trade --local --network blockdag
 

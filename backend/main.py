@@ -1,6 +1,8 @@
 from textwrap import indent
 from flask import Flask, jsonify, render_template, Blueprint, request, redirect
 import os
+import requests
+
 import json
 import datetime as dt
 import traceback
@@ -29,6 +31,7 @@ GIT_COMMIT = os.getenv('GIT_COMMIT_HASH', 'unknown')
 BUILD_TIME = os.getenv('BUILD_TIME', 'unknown')
 
 SETTLEMENT_STORE_PATH = "./settlements"
+ARWEAVE_NODE_URL = os.getenv('ARWEAVE_NODE_URL')
 ALCHEMY_API_KEY = os.getenv('ALCHEMY_API_KEY')
 PRIVATE_KEY = os.getenv('EVM_PRIVATE_KEY')
 SECRET_API_KEY = os.getenv("VALIDATOR_API_KEY")
@@ -43,7 +46,35 @@ for network, cfg in config.items():
     for reg_name, address in cfg['registry_addresses'].items():
         print(f"  {reg_name}: {address}")
 
+global settlement_map
+
+settlement_map = {}
+
 assert ALCHEMY_API_KEY and PRIVATE_KEY, "Missing Gateway API Key and Wallet Private Key"
+
+def post_to_arweave(settlement_info):
+    settlement_map[settlement_info['settlement_id']] = None  # Initialize the settlement map entry
+    try:
+        headers = {"Content-Type": "application/json"}
+        r = requests.post(url=f"{ARWEAVE_NODE_URL}post-data", headers=headers, json={"data": json.dumps(settlement_info)})
+        r.raise_for_status()  # Ensure the request was successful
+        tx_id = r.json().get('tx_id')
+        status = r.json().get('status')
+        if tx_id:
+            settlement_info['arweave_tx_id'] = tx_id
+            settlement_info['arweave_status'] = status
+            print(f'Arweave transaction ID: {tx_id}')
+            settlement_map[settlement_info['settlement_id']] = tx_id
+        else:
+            settlement_info['arweave_tx_id'] = None
+            settlement_info['arweave_status'] = "failed"
+            print(f"Failed to post to Arweave: {r.json().get('error', 'Unknown error')}")
+    except Exception as e:
+        print(f"Error posting to Arweave: {e}")
+        settlement_info['arweave_tx_id'] = None
+        settlement_info['arweave_status'] = "failed"
+    
+    return settlement_info
 
 def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, metadata):
     print(f'tx: {tx}')
@@ -207,12 +238,33 @@ def create_app():
     
     @app.route("/api/get_settlement/<settlement_id>", methods=["GET"])
     def get_settlement(settlement_id):
-        settlement_path = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-        if not os.path.exists(settlement_path):
+        # settlement_path = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
+        # if not os.path.exists(settlement_path):
+        #     return jsonify({"error": "Settlement not found"}), 404
+
+        # with open(settlement_path, "r") as f:
+        #     settlement_info = json.load(f)
+
+        global settlement_map
+
+        arweave_tx = settlement_map.get(settlement_id, None)
+        if arweave_tx is None:
             return jsonify({"error": "Settlement not found"}), 404
 
-        with open(settlement_path, "r") as f:
-            settlement_info = json.load(f)
+        try:
+            response = requests.get(f"http://localhost:1984/{arweave_tx}")
+            if response.status_code == 200:
+                raw_data = response.text  # <-- this was missing
+                settlement_info = json.loads(raw_data)
+                return jsonify({'tx_id': arweave_tx, 'data': settlement_info})
+            elif response.status_code == 202:
+                return jsonify({'message': f"Transaction {arweave_tx} is pending."}), 202
+            elif response.status_code == 404:
+                return jsonify({'message': f"Transaction {arweave_tx} not found."}), 404
+            else:
+                return jsonify({'error': f"Unexpected response ({response.status_code}): {response.text}"}), response.status_code
+        except requests.exceptions.RequestException as e:
+            return jsonify({'error': str(e)}), 500
 
         return jsonify(settlement_info)
 
@@ -424,9 +476,30 @@ def create_app():
 
         settlement_info = init_attest_util(settlement_info, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, metadata)
 
+        settlement_info = post_to_arweave(settlement_info)
+
+        # try:
+        #     headers = {"Content-Type": "application/json"}
+        #     r = requests.post(url=f"{ARWEAVE_NODE_URL}post-data", headers=headers, json={"data": json.dumps(settlement_info)})
+        #     r.raise_for_status()  # Ensure the request was successful
+        #     tx_id = r.json().get('tx_id')
+        #     status = r.json().get('status')
+        #     if tx_id:
+        #         settlement_info['arweave_tx_id'] = tx_id
+        #         settlement_info['arweave_status'] = status
+        #         print(f'Arweave transaction ID: {tx_id}')
+        #     else:
+        #         settlement_info['arweave_tx_id'] = None
+        #         settlement_info['arweave_status'] = "failed"
+        #         print(f"Failed to post to Arweave: {r.json().get('error', 'Unknown error')}")
+        # except Exception as e:
+        #     print(f"Error posting to Arweave: {e}")
+        #     settlement_info['arweave_tx_id'] = None
+        #     settlement_info['arweave_status'] = "failed"
+        
         with open(SETTLEMENT_PATH, "w") as f:
             json.dump(settlement_info, f)
-
+        
         return jsonify({"status": "registered", "settlement_info": settlement_info})
 
     @app.route('/api/initiate_attestation', methods=['POST'])

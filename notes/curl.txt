@@ -29,8 +29,18 @@ curl "http://127.0.0.1:5045/api/attest/paypal-callback?token=2Y57138742264934M"
 
 curl -X POST http://localhost:5045/api/clear_settlement_cache
 
+curl -X POST http://127.0.0.1:5480/post-data?data=test
+
+
 curl -H "Content-Type: application/json" -X POST -d "{\"address\": \"0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3\", \"network\":\"blockdag\"}" http://127.0.0.1:5000/faucet
 curl "http://127.0.0.1:5000/faucet_balance?network=blockdag"
+
+curl -H "Content-Type: application/json" -X POST -d "{\"data\":\"test\"}" http://127.0.0.1:5480/post-data
+
+curl "http://127.0.0.1:5480/get-data/OGbgKpAiqcVGPmvLI8zeWuNqVsqkvXu2H2dI1RwAKvE"
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/ad3dfaPxas8955s75
+
 
 
 

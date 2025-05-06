@@ -1,5 +1,5 @@
-import arweave
 import os
+import arweave
 import time
 import requests
 import click
@@ -61,10 +61,27 @@ def post_data(data):
     tx = post_to_arweave(wallet, data)
     print(f'Posted data to Arweave. Transaction ID: {tx.id}')
 
-    # status = requests.get(f"http://localhost:1984/tx/{tx.id}/status")
-    # print(f'Transaction status: {status}')
+    status = requests.get(f"http://localhost:1984/tx/{tx.id}/status")
+    print(f'Transaction status: {status}')
 
     print(f'Posted data to Arweave. Transaction ID: {tx.id}')
+
+@cli.command()
+@click.argument('tx_id')
+def get_data(tx_id):
+    """Retrieve and display data from Arweave using a transaction ID."""
+    try:
+        response = requests.get(f"http://localhost:1984/{tx_id}")
+        if response.status_code == 200:
+            print(f"Data for TXID {tx_id}:\n{response.text}")
+        elif response.status_code == 202:
+            print(f"Transaction {tx_id} is pending.")
+        elif response.status_code == 404:
+            print(f"Transaction {tx_id} not found.")
+        else:
+            print(f"Unexpected response ({response.status_code}): {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the data: {e}")
 
 if __name__ == "__main__":
     cli()

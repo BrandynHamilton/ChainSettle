@@ -9,7 +9,8 @@ import requests
 from dotenv import load_dotenv, set_key
 import os
 import random
-from web3.exceptions import TimeExhausted
+# from web3.exceptions import 
+
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests import exceptions as req_ex
 from urllib3.exceptions import ProtocolError, SSLError
@@ -169,38 +170,49 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
 
     return {'attestation_receipt': attestation_receipt, 'validation_receipt': validation_receipt}
 
-def post_to_arweave(wallet, string, mine=True, retries=10, delay=1):
-    # Step 1: Create and sign transaction
-    tx = Transaction(wallet, data=string)
-    tx.sign()
-    tx_data = tx.to_dict()
+def get_last_tx():
+    response = requests.get("http://localhost:1984/tx_anchor")
+    if response.status_code == 200:
+        return response.text
+    else:
+        raise Exception("Failed to fetch tx_anchor")
 
-    # Step 2: POST transaction
-    res = requests.post("http://localhost:1984/tx", json=tx_data)
-    if res.status_code != 200:
-        print("Failed to post transaction")
-        print(res.text)
+def post_to_arweave(wallet, data, mine=True, retries=10, delay=1):
+    try:
+        last_tx = get_last_tx()
+        print(F'last_tx: {last_tx}')
+        tx = Transaction(wallet, data=data)
+        print(f'tx: {tx}')
+        tx.last_tx = last_tx
+        tx.sign()
+        tx_data = tx.to_dict()
+
+        response = requests.post("http://localhost:1984/tx", json=tx_data)
+        if response.status_code != 200:
+            print("Failed to post transaction")
+            print(response.text)
+            return None
+
+        print(f"Posted transaction {tx.id}")
+
+        if mine:
+            mine_response = requests.get("http://localhost:1984/mine")
+            if mine_response.status_code == 200:
+                print("Block mined")
+
+        for i in range(retries):
+            status_response = requests.get(f"http://localhost:1984/tx/{tx.id}/status")
+            if status_response.status_code == 200:
+                print(f"Transaction confirmed: {tx.id}")
+                return tx
+            print(f"Waiting for confirmation... ({i+1}/{retries})")
+            time.sleep(delay)
+
+        print(f"Transaction not confirmed after {retries} retries: {tx.id}")
+        return tx
+    except Exception as e:
+        print(f"An error occurred: {e}")
         return None
-
-    print(f"Posted transaction {tx.id}")
-
-    # Step 3: Mine if enabled
-    if mine:
-        mine_res = requests.get("http://localhost:1984/mine")
-        if mine_res.status_code == 200:
-            print("Block mined")
-
-    # Step 4: Poll status
-    for i in range(retries):
-        status_res = requests.get(f"http://localhost:1984/tx/{tx.id}/status")
-        if status_res.status_code == 200:
-            print(f"Transaction confirmed: {tx.id}")
-            return tx
-        print(f"Waiting for confirmation... ({i+1}/{retries})")
-        time.sleep(delay)
-
-    print(f"Transaction not confirmed after {retries} retries: {tx.id}")
-    return tx
 
 def get_tx_status(tx_id):
     url = f"http://localhost:1984/tx/{tx_id}/status"

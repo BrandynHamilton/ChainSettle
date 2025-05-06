@@ -1,3 +1,8 @@
 python arlocal.py fund --amount 500
 python arlocal.py fund --address SOME_ADDRESS
 python arlocal.py post-data --data test
+
+python arlocal.py get-data rbUfyrrVlHJsH-Q8KbwFFT0Wg1Bbo2CFAAyw29c7m-M
+
+
+
