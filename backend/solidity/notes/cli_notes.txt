@@ -1,10 +1,10 @@
-python deploy.py --contract SettlementRegistry --network ethereum --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
+python deploy_contract.py --contract SettlementRegistry --network ethereum --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
 
-python deploy.py --contract SettlementRegistry --network blockdag --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
+python deploy_contract.py --contract SettlementRegistry --network blockdag --save-env-key-base SETTLEMENT_REGISTRY_ADDRESS --constructor-args constructor_args.json
 
-python deploy.py --contract ValidatorRegistry --network ethereum --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
+python deploy_contract.py --contract ValidatorRegistry --network ethereum --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
 
-python deploy.py --contract ValidatorRegistry --network blockdag --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
+python deploy_contract.py --contract ValidatorRegistry --network blockdag --save-env-key-base VALIDATOR_REGISTRY_ADDRESS
 
 python add_validator.py --new_validator_address 0x6fbc41ea9cff9f1c2dcc8f61e190623d0b1cd7b3 --network ethereum 
 
@@ -20,7 +20,7 @@ python add_validator.py --new_validator_address 0x00Fc010339a338e00F77ce4fe89156
 
 python add_validator.py --new_validator_address None --network all
 
-python deploy.py --nodes 0 --allowlist allowlist.csv
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python deploy.py --nodes 0 --allowlist allowlist.csv
 
 python deploy.py --allowlist allowlist.csv
 

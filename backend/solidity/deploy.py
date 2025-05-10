@@ -52,12 +52,12 @@ def main(nodes, only_validators, allowlist):
             validator_contract_address, validator_abi_file_path = deploy_contract(private_key=PRIVATE_KEY, network=network, contract_file="ValidatorRegistry.sol", save_env_key_base="VALIDATOR_REGISTRY_ADDRESS")
             time.sleep(3)
 
-            validator_address = os.getenv(f'VALIDATOR_REGISTRY_ADDRESS_{upper}')
+            # validator_address = os.getenv(f'VALIDATOR_REGISTRY_ADDRESS_{upper}')
             settlement_contract_address, settlement_abi_file_path = deploy_contract(
                 private_key=PRIVATE_KEY,
                 network=network,
                 contract_file="SettlementRegistry.sol",
-                constructor_args={'_validatorRegistry': validator_address},
+                constructor_args={'_validatorRegistry': validator_contract_address},
                 save_env_key_base="SETTLEMENT_REGISTRY_ADDRESS"
             )
             time.sleep(3)
@@ -109,12 +109,7 @@ def main(nodes, only_validators, allowlist):
                             private_key=PRIVATE_KEY,
                             network=network,
                             new_validator_address=addr,
-                            address_map={
-                                network: config[network]['registry_addresses']['ValidatorRegistry']
-                            },
-                            abi_map={
-                                network: os.path.join("abi", f"ValidatorRegistry_{upper}_abi.json")
-                            }
+                            config=config
                         )
                         print(f"Allowlisted validator {addr} on {network}")
                         time.sleep(1)

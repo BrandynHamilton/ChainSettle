@@ -39,7 +39,7 @@ curl -H "Content-Type: application/json" -X POST -d "{\"data\":\"test\"}" http:/
 
 curl "http://127.0.0.1:5480/get-data/OGbgKpAiqcVGPmvLI8zeWuNqVsqkvXu2H2dI1RwAKvE"
 
-curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/ad3dfaPxas8955s75
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/1234
 
 
 

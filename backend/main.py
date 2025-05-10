@@ -2,6 +2,8 @@ from textwrap import indent
 from flask import Flask, jsonify, render_template, Blueprint, request, redirect
 import os
 import requests
+import arweave
+from typing import Dict
 
 import json
 import datetime as dt
@@ -10,6 +12,7 @@ import traceback
 from datetime import timedelta
 from dotenv import load_dotenv
 import time
+from diskcache import Cache
 from plaid.exceptions import ApiException
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.transactions_get_request import TransactionsGetRequest
@@ -19,18 +22,23 @@ from chainsettle import (create_link_token,create_plaid_client, github_tag_exist
                          simulate_plaid_tx_and_get_access_token,parse_date,network_func,attest_onchain,prepare_email_response,
                          wait_for_transaction_settlement,init_attest_onchain,SUPPORTED_NETWORKS,STATUS_MAP,SUPPORTED_APIS,
                          format_size,post_to_arweave,get_tx_status,wait_for_finalization_event,send_email_notification,
-                         PayPalModule,find_settlement_id_by_order,add_validator)
+                         PayPalModule,add_validator, find_settlement_id_by_order)
 
 load_dotenv()
 
 SOLIDITY_ENV_PATH = os.path.join(os.getcwd(), 'solidity', '.env')
 load_dotenv(dotenv_path=SOLIDITY_ENV_PATH, override=True)
 
+cache = Cache('cache')
+settlement_map = {}
+
 PORT = os.getenv('PORT', 5045)
 GIT_COMMIT = os.getenv('GIT_COMMIT_HASH', 'unknown')
 BUILD_TIME = os.getenv('BUILD_TIME', 'unknown')
 
 SETTLEMENT_STORE_PATH = "./settlements"
+SETTLEMENT_MAP_PATH = "settlement_map.json"
+ARWEAVE_BASE_URL = "http://localhost:1984"
 ARWEAVE_NODE_URL = os.getenv('ARWEAVE_NODE_URL')
 ALCHEMY_API_KEY = os.getenv('ALCHEMY_API_KEY')
 PRIVATE_KEY = os.getenv('EVM_PRIVATE_KEY')
@@ -46,35 +54,7 @@ for network, cfg in config.items():
     for reg_name, address in cfg['registry_addresses'].items():
         print(f"  {reg_name}: {address}")
 
-global settlement_map
-
-settlement_map = {}
-
 assert ALCHEMY_API_KEY and PRIVATE_KEY, "Missing Gateway API Key and Wallet Private Key"
-
-def post_to_arweave(settlement_info):
-    settlement_map[settlement_info['settlement_id']] = None  # Initialize the settlement map entry
-    try:
-        headers = {"Content-Type": "application/json"}
-        r = requests.post(url=f"{ARWEAVE_NODE_URL}post-data", headers=headers, json={"data": json.dumps(settlement_info)})
-        r.raise_for_status()  # Ensure the request was successful
-        tx_id = r.json().get('tx_id')
-        status = r.json().get('status')
-        if tx_id:
-            settlement_info['arweave_tx_id'] = tx_id
-            settlement_info['arweave_status'] = status
-            print(f'Arweave transaction ID: {tx_id}')
-            settlement_map[settlement_info['settlement_id']] = tx_id
-        else:
-            settlement_info['arweave_tx_id'] = None
-            settlement_info['arweave_status'] = "failed"
-            print(f"Failed to post to Arweave: {r.json().get('error', 'Unknown error')}")
-    except Exception as e:
-        print(f"Error posting to Arweave: {e}")
-        settlement_info['arweave_tx_id'] = None
-        settlement_info['arweave_status'] = "failed"
-    
-    return settlement_info
 
 def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, metadata):
     print(f'tx: {tx}')
@@ -159,6 +139,63 @@ def init_attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amoun
         tx['tx_url'] = None
         tx['error'] = str(e)    
 
+def update_settlement_info(settlement_id: str, settlement_info: dict):
+    """
+    Stores the full settlement_info in cache under settlement_id,
+    and appends tx_id to the arweave_tx_map[settlement_id] list.
+    """
+    # Store latest settlement info under its ID
+    cache[settlement_id] = settlement_info
+
+    print(f"[cache] Saved settlement_info and updated tx history for {settlement_id}")
+
+def get_settlement_info(settlement_id: str):
+    # Store latest settlement info under its ID
+
+    settlement_info = cache.get(settlement_id, None)
+
+    return settlement_info
+
+def is_settlement_initialized_onchain(settlement_id: str, contract) -> bool:
+    """
+    Returns True if the settlement_id is already initialized onchain.
+    """
+    onchain_data = contract.functions.settlements(settlement_id).call()
+    return onchain_data[0] != ''  # settlementId field
+
+def is_settlement_confirmed_onchain(settlement_id: str, contract) -> bool:
+    """
+    Returns True if the settlement_id has status 1 (Confirmed).
+    """
+    onchain_data = contract.functions.settlements(settlement_id).call()
+    return onchain_data[2] == 1  # Status enum: 0=Unverified, 1=Confirmed, 2=Failed
+
+def is_settlement_registered_locally(settlement_id: str) -> bool:
+    """
+    Returns True if the settlement_id is already in diskcache.
+    """
+    return cache.get(settlement_id) is not None
+
+def validate_settlement_id_before_registration(settlement_id: str, contract) -> tuple[bool, str]:
+    """
+    Combines local and onchain checks before allowing a new registration.
+    """
+    if is_settlement_registered_locally(settlement_id):
+        return False, f"Settlement ID '{settlement_id}' already registered in local cache."
+    if is_settlement_initialized_onchain(settlement_id, contract):
+        return False, f"Settlement ID '{settlement_id}' already exists onchain."
+    return True, "OK"
+
+def validate_settlement_id_before_attestation(settlement_id: str, contract) -> tuple[bool, str]:
+    """
+    Checks if the settlement exists and is not already confirmed.
+    """
+    if not is_settlement_initialized_onchain(settlement_id, contract):
+        return False, f"Settlement ID '{settlement_id}' not initialized onchain."
+    if is_settlement_confirmed_onchain(settlement_id, contract):
+        return False, f"Settlement ID '{settlement_id}' is already confirmed onchain."
+    return True, "OK"
+
 # Flask App Factory
 def create_app():
     app = Flask(__name__)
@@ -216,57 +253,24 @@ def create_app():
 
     @app.route("/api/clear_settlement_cache", methods=["POST"])
     def clear_settlement_cache():
-        cleared = []
-        for filename in os.listdir(SETTLEMENT_STORE_PATH):
-            if filename.endswith(".json"):
-                path = os.path.join(SETTLEMENT_STORE_PATH, filename)
-                try:
-                    os.remove(path)
-                    cleared.append(filename)
-                except Exception as e:
-                    print(f"Failed to delete {filename}: {e}")
+        cleared_keys = list(cache.iterkeys())
+        cache.clear()
         return jsonify({
-            "cleared_files": cleared,
+            "cleared_settlement_ids": cleared_keys,
             "status": "complete"
         }), 200
 
     @app.route("/api/settlements", methods=["GET"])
     def list_settlements():
-        files = os.listdir(SETTLEMENT_STORE_PATH)
-        ids = [f.replace(".json", "") for f in files if f.endswith(".json")]
+        ids = list(cache.iterkeys())
         return jsonify({"settlement_ids": ids})
-    
+
     @app.route("/api/get_settlement/<settlement_id>", methods=["GET"])
     def get_settlement(settlement_id):
-        # settlement_path = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-        # if not os.path.exists(settlement_path):
-        #     return jsonify({"error": "Settlement not found"}), 404
-
-        # with open(settlement_path, "r") as f:
-        #     settlement_info = json.load(f)
-
-        global settlement_map
-
-        arweave_tx = settlement_map.get(settlement_id, None)
-        if arweave_tx is None:
-            return jsonify({"error": "Settlement not found"}), 404
-
-        try:
-            response = requests.get(f"http://localhost:1984/{arweave_tx}")
-            if response.status_code == 200:
-                raw_data = response.text  # <-- this was missing
-                settlement_info = json.loads(raw_data)
-                return jsonify({'tx_id': arweave_tx, 'data': settlement_info})
-            elif response.status_code == 202:
-                return jsonify({'message': f"Transaction {arweave_tx} is pending."}), 202
-            elif response.status_code == 404:
-                return jsonify({'message': f"Transaction {arweave_tx} not found."}), 404
-            else:
-                return jsonify({'error': f"Unexpected response ({response.status_code}): {response.text}"}), response.status_code
-        except requests.exceptions.RequestException as e:
-            return jsonify({'error': str(e)}), 500
-
-        return jsonify(settlement_info)
+        settlement_info = cache.get(settlement_id, None)
+        if settlement_info is None:
+            return jsonify({"error": f"Settlement ID '{settlement_id}' not found"}), 404
+        return jsonify({"settlement_id": settlement_id, "data": settlement_info}), 200
 
     @app.route("/api/create_link_token", methods=["GET"])
     def create_token():
@@ -289,16 +293,16 @@ def create_app():
         # breakpoint()
 
         # Find associated settlement
-        settlement_id = find_settlement_id_by_order(order_id, SETTLEMENT_STORE_PATH)
+        settlement_id = find_settlement_id_by_order(order_id, cache)
         if not settlement_id:
             return "Could not locate associated settlement ID", 400
+        
+        settlement_info = get_settlement_info(settlement_id)
 
-        SETTLEMENT_PATH = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-        if not os.path.exists(SETTLEMENT_PATH):
-            return f"Settlement ID '{settlement_id}' not found", 400
+        print(f'settlement_info: {settlement_info}')
 
-        with open(SETTLEMENT_PATH, "r") as f:
-            settlement_info = json.load(f)
+        if settlement_info is None:
+            return jsonify({"error": f"No settlement info for settlement_id {settlement_id}"}), 400
 
         if settlement_info.get('settlement_type') != 'paypal':
             return "Settlement type is not PayPal", 400
@@ -337,8 +341,7 @@ def create_app():
                 settlement_info['finalStatus'] = status
                 settlement_info['capture_id'] = capture_id
 
-                with open(SETTLEMENT_PATH, "w") as f:
-                    json.dump(settlement_info, f, indent=2)
+                update_settlement_info(settlement_id, settlement_info)
 
                 if notify_email:
                     subject, body = prepare_email_response(settlement_info)
@@ -390,7 +393,19 @@ def create_app():
         public_token = data.get("public_token", None)
         recipient_email = data.get('recipient_email')
 
-        print(f'recipient_email: {recipient_email}')
+        REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
+        url = config[network]['explorer_url']
+        REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
+
+        print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS},   URL: {url}')
+
+        w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
+
+        contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
+
+        ok, msg = validate_settlement_id_before_registration(settlement_id, contract)
+        if not ok:
+            return jsonify({"error": msg}), 400
 
         if settlement_type not in SUPPORTED_APIS:
             return jsonify({"error": f"Unsupported settlement type: {settlement_type}. Supported types are {SUPPORTED_APIS}"}), 400
@@ -400,13 +415,9 @@ def create_app():
         
         if network not in ['ethereum','blockdag']:
             return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
-
-        SETTLEMENT_PATH = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-        if os.path.exists(SETTLEMENT_PATH):
-            return jsonify({"error": f"Settlement ID '{settlement_id}' is already registered"}), 400
-
+        
         try: 
-            amount = float(data.get('amount' , 0))
+            amount = float(data.get('amount', 0))
         except (TypeError, ValueError):
             amount = 0.0
         
@@ -414,11 +425,6 @@ def create_app():
             metadata = str(data.get('metadata', ""))
         except:
             metadata = ""
-
-        REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
-        url = config[network]['explorer_url']
-        REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
-        w3, account = network_func(network=network,ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
 
         print(f"Account: {account.address}")
         print(f'recipient_email: {recipient_email}')
@@ -476,29 +482,7 @@ def create_app():
 
         settlement_info = init_attest_util(settlement_info, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, metadata)
 
-        settlement_info = post_to_arweave(settlement_info)
-
-        # try:
-        #     headers = {"Content-Type": "application/json"}
-        #     r = requests.post(url=f"{ARWEAVE_NODE_URL}post-data", headers=headers, json={"data": json.dumps(settlement_info)})
-        #     r.raise_for_status()  # Ensure the request was successful
-        #     tx_id = r.json().get('tx_id')
-        #     status = r.json().get('status')
-        #     if tx_id:
-        #         settlement_info['arweave_tx_id'] = tx_id
-        #         settlement_info['arweave_status'] = status
-        #         print(f'Arweave transaction ID: {tx_id}')
-        #     else:
-        #         settlement_info['arweave_tx_id'] = None
-        #         settlement_info['arweave_status'] = "failed"
-        #         print(f"Failed to post to Arweave: {r.json().get('error', 'Unknown error')}")
-        # except Exception as e:
-        #     print(f"Error posting to Arweave: {e}")
-        #     settlement_info['arweave_tx_id'] = None
-        #     settlement_info['arweave_status'] = "failed"
-        
-        with open(SETTLEMENT_PATH, "w") as f:
-            json.dump(settlement_info, f)
+        update_settlement_info(settlement_id, settlement_info)
         
         return jsonify({"status": "registered", "settlement_info": settlement_info})
 
@@ -507,13 +491,11 @@ def create_app():
         data = request.get_json()
 
         settlement_id = data.get("settlement_id")
-        SETTLEMENT_PATH = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-        print(f'SETTLEMENT_PATH: {SETTLEMENT_PATH}')
-        if not os.path.exists(SETTLEMENT_PATH):
-            return jsonify({"error": f"Settlement ID '{settlement_id}' not found"}), 400
 
-        with open(SETTLEMENT_PATH, "r") as f:
-            settlement_info = json.load(f)
+        settlement_info = get_settlement_info(settlement_id)
+
+        if settlement_info is None:
+            return jsonify({"error": f"No settlement info for settlement_id {settlement_id}"}), 400
 
         print(f'settlement_info: {settlement_info}')
 
@@ -529,9 +511,6 @@ def create_app():
         amount = settlement_info.get('amount', 0.0)
         notify_email = settlement_info.get('notify_email', None)
 
-        if network not in ['ethereum', 'blockdag']:
-            return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
-
         REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
         url = config[network]['explorer_url']
         REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
@@ -539,6 +518,16 @@ def create_app():
         print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS},   URL: {url}')
 
         w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
+
+        contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
+
+        ok, msg = validate_settlement_id_before_attestation(settlement_id, contract)
+        if not ok:
+            return jsonify({"error": msg}), 400
+
+        if network not in ['ethereum', 'blockdag']:
+            return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
+
         latest_block = w3.eth.get_block("latest")
         blocknumber = latest_block['number']
 
@@ -599,8 +588,7 @@ def create_app():
             response_payload['finalStatus'] = status
             print(f'Final Status: {status}')
 
-            with open(SETTLEMENT_PATH, "w") as f:
-                json.dump(response_payload, f, indent=2)
+            update_settlement_info(settlement_id, response_payload)
 
             if notify_email is not None:
                 subject, body = prepare_email_response(response_payload)
@@ -640,23 +628,17 @@ def create_app():
 
             print(f'order_id: {order_id}')
 
-            settlement_info.update({
+            response_payload.update({
                 "status": "pending",
                 "order_id": order_id,
                 "approval_url": approval_url,
                 "metadata": combined_metadata
             })
 
-            with open(SETTLEMENT_PATH, "w") as f:
-                json.dump(settlement_info, f, indent=2)
-
-            with open(SETTLEMENT_PATH, "r") as f:
-                saved_settlement_info = json.load(f)
-
-            print(json.dumps(saved_settlement_info, indent=2))
+            update_settlement_info(settlement_id, response_payload)
 
             return jsonify(
-                settlement_info
+                response_payload
             ), 200
 
         elif settlement_type == 'plaid':
@@ -735,8 +717,7 @@ def create_app():
             response_payload['finalStatus'] = status
             print(f'Final Status: {status}')
 
-            with open(SETTLEMENT_PATH, "w") as f:
-                json.dump(response_payload, f, indent=2)
+            update_settlement_info(settlement_id, response_payload)
 
             if notify_email is not None:
                 subject, body = prepare_email_response(response_payload)
@@ -744,93 +725,6 @@ def create_app():
                 send_email_notification(subject, body, notify_email)
 
             return jsonify(response_payload)
-        
-    # @app.route("/api/attest/paypal-callback", methods=["GET"])
-    # def handle_paypal_callback():
-    #     order_id = request.args.get("token")  # token is the PayPal order_id
-
-    #     if not order_id:
-    #         return "Missing token (order ID)", 400
-
-    #     # Try to find the associated settlement_id from local store
-    #     settlement_id = find_settlement_id_by_order(order_id, SETTLEMENT_STORE_PATH)  # implement this lookup
-    #     if not settlement_id:
-    #         return "Could not locate associated settlement ID", 400
-        
-    #     SETTLEMENT_PATH = os.path.join(SETTLEMENT_STORE_PATH, f"{settlement_id}.json")
-
-    #     if not any([order_id, settlement_id]):
-    #         return "Missing order ID or Settlement ID", 400
-        
-    #     print(f'SETTLEMENT_PATH: {SETTLEMENT_PATH}')
-    #     if not os.path.exists(SETTLEMENT_PATH):
-    #         return jsonify({"error": f"Settlement ID '{settlement_id}' not found"}), 400
-
-    #     with open(SETTLEMENT_PATH, "r") as f:
-    #         settlement_info = json.load(f)
-
-    #     if settlement_info.get('settlement_type') != 'paypal':
-    #         return jsonify({"error": "Settlement type is not PayPal"}), 400
-
-    #     print(f'settlement_info: {settlement_info}')
-
-    #     metadata = settlement_info.get('metadata')
-    #     notify_email = settlement_info.get('notify_email', None)
-
-    #     paypal = PayPalModule(sandbox=True)
-
-    #     try:
-    #         capture_details = paypal.capture_order(order_id)
-    #         print(f'capture_details" {capture_details}')
-
-    #         # ⬇️ All your existing logic from here
-    #         capture_id = capture_details["purchase_units"][0]["payments"]["captures"][0]["id"]
-    #         payer_email = capture_details["payer"]["email_address"]
-    #         gross_amount = capture_details["purchase_units"][0]["payments"]["captures"][0]["amount"]["value"]
-    #         paypal_fee = capture_details["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["paypal_fee"]["value"]
-    #         net_amount = capture_details["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["net_amount"]["value"]
-    #         recipient_email = capture_details["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["net_amount"]["currency_code"]
-
-    #         print(f"Payment completed with capture ID: {capture_id}")
-    #         print(f'payer_email: {payer_email}')
-    #         print(f'gross_amount: {gross_amount}')
-    #         print(f'paypal_fee: {paypal_fee}')
-    #         print(f'net_amount: {net_amount}')
-
-    #         REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
-    #         url = config[network]['explorer_url']
-    #         REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
-
-    #         print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS},   URL: {url}')
-
-    #         w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
-
-    #         if paypal.wait_for_transaction_settlement(capture_id):
-    #             status_enum = STATUS_MAP.get("confirmed")
-    #             settlement_info["status"] = "confirmed"
-    #             settlement_info = attest_util(
-    #                 settlement_info, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI,
-    #                 int(net_amount), settlement_id, status_enum, metadata
-    #             )
-
-    #             contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
-    #             status = wait_for_finalization_event(w3, contract, settlement_id)
-    #             settlement_info['finalStatus'] = status
-    #             settlement_info['capture_id'] = capture_id
-    #             print(f'Final Status: {status}')
-
-    #             with open(SETTLEMENT_PATH, "w") as f:
-    #                 json.dump(settlement_info, f, indent=2)
-
-    #             if notify_email is not None:
-    #                 subject, body = prepare_email_response(settlement_info)
-    #                 print(f'Sending email notification to {notify_email}')
-    #                 send_email_notification(subject, body, notify_email)
-
-    #             return jsonify(settlement_info), 200
-
-    #     except Exception as e:
-    #         return f"❌ Error: {e}", 500
 
     return app
 
@@ -838,5 +732,6 @@ if __name__ == "__main__":
     print("Git Commit Hash:", GIT_COMMIT)
     print("Build Timestamp:", BUILD_TIME)
     print('Starting ChainSettle API...')
+
     app = create_app()
-    app.run(host='0.0.0.0', debug=True, use_reloader=False, port=int(PORT))
+    app.run(host='0.0.0.0', debug=True, use_reloader=True, port=int(PORT))

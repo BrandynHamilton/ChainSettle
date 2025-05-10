@@ -50,7 +50,7 @@ def network_func(PRIVATE_KEY, network='ethereum',ALCHEMY_API_KEY=None):
     else:
         print(f"Failed to connect to {network}")
 
-def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, details = " "):
+def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, details = ""):
 
     settlement_registry_obj = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
@@ -98,7 +98,7 @@ def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_
 
     return receipt
 
-def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_type, settlement_id, status_enum, details = " "):
+def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_type, settlement_id, status_enum, details = ""):
 
     print(f'Attesting settlement {settlement_id} with amount {amount} and type {settlement_type}')
 
@@ -177,17 +177,20 @@ def get_last_tx():
     else:
         raise Exception("Failed to fetch tx_anchor")
 
-def post_to_arweave(wallet, data, mine=True, retries=10, delay=1):
+def post_to_arweave(wallet, data, settlement_id, mine=True, retries=10, delay=1):
+    ARLOCAL_SERVER = os.getenv("ARLOCAL_SERVER", "http://localhost:1984")
+
     try:
         last_tx = get_last_tx()
         print(F'last_tx: {last_tx}')
         tx = Transaction(wallet, data=data)
+        tx.add_tag("settlement_id", settlement_id)
         print(f'tx: {tx}')
         tx.last_tx = last_tx
         tx.sign()
         tx_data = tx.to_dict()
 
-        response = requests.post("http://localhost:1984/tx", json=tx_data)
+        response = requests.post(f"{ARLOCAL_SERVER}/tx", json=tx_data)
         if response.status_code != 200:
             print("Failed to post transaction")
             print(response.text)
@@ -196,12 +199,12 @@ def post_to_arweave(wallet, data, mine=True, retries=10, delay=1):
         print(f"Posted transaction {tx.id}")
 
         if mine:
-            mine_response = requests.get("http://localhost:1984/mine")
+            mine_response = requests.get(f"{ARLOCAL_SERVER}/mine")
             if mine_response.status_code == 200:
                 print("Block mined")
 
         for i in range(retries):
-            status_response = requests.get(f"http://localhost:1984/tx/{tx.id}/status")
+            status_response = requests.get(f"{ARLOCAL_SERVER}/tx/{tx.id}/status")
             if status_response.status_code == 200:
                 print(f"Transaction confirmed: {tx.id}")
                 return tx

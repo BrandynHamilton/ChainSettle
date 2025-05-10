@@ -1,8 +1,12 @@
-python arlocal.py fund --amount 500
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python arlocal.py fund --amount 500
 python arlocal.py fund --address SOME_ADDRESS
 python arlocal.py post-data --data test
 
 python arlocal.py get-data rbUfyrrVlHJsH-Q8KbwFFT0Wg1Bbo2CFAAyw29c7m-M
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5480/map-txs
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5480/get-data/Up9H6axufOwTsS5rN4chxOra35lhvY6mpxIopcX_G9g
 
 
 

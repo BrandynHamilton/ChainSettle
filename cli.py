@@ -18,25 +18,43 @@ BACKEND_URL = os.getenv('BACKEND_URL', "http://fsoh913eg59c590vufv3qkhod0.ingres
 LOCAL_URL = os.getenv('LOCAL_URL')
 
 def poll_for_settlement(settlement_id, max_retries=20, poll_interval=10):
-    print(f"Waiting for settlement {settlement_id} to be initialized onchain...")
+    print(f"Polling for onchain activity for settlement '{settlement_id}'...")
 
     for attempt in range(max_retries):
         try:
             res = requests.get(f"{BACKEND_URL}/api/get_settlement/{settlement_id}")
             res.raise_for_status()
-            data = res.json()
-            tx_hash = data.get("tx_hash")
+            data = res.json().get("data", {})
 
-            if tx_hash:
-                click.echo(f"Settlement {settlement_id} initialized!")
-                click.echo(f"Explorer URL: {data.get('tx_url')}")
-                return
-        except Exception as e:
-            pass  
+            # Check for all possible tx types
+            tx_hashes = {
+                "Init": data.get("tx_hash"),
+                "Attest": data.get("attest_tx_hash"),
+                "Validate": data.get("validate_tx_hash")
+            }
+            urls = {
+                "Init": data.get("tx_url"),
+                "Attest": data.get("attest_tx_url"),
+                "Validate": data.get("validate_tx_url")
+            }
+
+            found_any = False
+            for label, tx in tx_hashes.items():
+                if tx:
+                    found_any = True
+                    click.echo(f"{label} transaction found: {tx}")
+                    if urls[label]:
+                        click.echo(f"{label} Explorer URL: {urls[label]}")
+
+            if found_any:
+                return  # Exit polling
+
+        except Exception:
+            pass
 
         time.sleep(poll_interval)
 
-    click.echo(f"Timed out waiting for {settlement_id} settlement.")
+    click.echo(f"Timed out waiting for settlement '{settlement_id}' to post transactions.")
 
 @click.group()
 def cli():
@@ -192,6 +210,9 @@ def attest(settlement_id, metadata, local):
             click.echo(f"Approval URL: {data['approval_url']}")
             if click.confirm("Open in browser now?", default=True):
                 webbrowser.open(data['approval_url'])
+
+            if click.confirm("Wait for onchain confirmation?", default=True):
+                poll_for_settlement(settlement_id)
 
     except requests.exceptions.RequestException as e:
         if e.response is not None:

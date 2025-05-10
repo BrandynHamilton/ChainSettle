@@ -25,6 +25,7 @@ contract SettlementRegistry {
     mapping(string => uint256) public rejectVotes;   // settlementId => number of rejects
     mapping(string => bool) public finalized;        // settlementId => finalized?
 
+    event SettlementInitialized(string settlementId, string settlementType, string metadata, uint256 amount);
     event Attested(string settlementId, string settlementType, Status status, string metadata, uint256 amount);
     event SettlementFinalized(string settlementId, Status finalStatus);
 
@@ -56,7 +57,7 @@ contract SettlementRegistry {
             amount: amount
         });
 
-        emit Attested(settlementId, settlementType, Status.Unverified, metadata, amount);
+        emit SettlementInitialized(settlementId, settlementType, metadata, amount);
     }
 
     function attest(

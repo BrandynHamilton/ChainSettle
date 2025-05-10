@@ -6,6 +6,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import logging
 import json
+from diskcache import Cache
 
 from dotenv import load_dotenv
 
@@ -13,17 +14,16 @@ load_dotenv()  # Load environment variables from .env file
 
 LOCAL_URL = os.getenv("LOCAL_URL", "http://localhost:5045")  # Default to localhost if not set
 
-def find_settlement_id_by_order(order_id, SETTLEMENT_STORE_PATH):
-    print(f'os.listdir(SETTLEMENT_STORE_PATH): {os.listdir(SETTLEMENT_STORE_PATH)}')
-    for file in os.listdir(SETTLEMENT_STORE_PATH):
-        path = os.path.join(SETTLEMENT_STORE_PATH, file)
-        if not path.endswith(".json"):
-            continue
-        with open(path, "r") as f:
-            data = json.load(f)
-            if data.get("order_id") == order_id:
-                print(f'matched data: {data}')
-                return data.get("settlement_id")
+def find_settlement_id_by_order(order_id: str, cache: Cache) -> str:
+    """
+    Iterates through the diskcache and returns the first settlement_id
+    where settlement_info['order_id'] matches the given order_id.
+    """
+    for key in cache.iterkeys():
+        settlement_info = cache.get(key)
+        if isinstance(settlement_info, dict) and settlement_info.get("order_id") == order_id:
+            print(f"[cache] Matched order_id in settlement: {settlement_info}")
+            return key
     return None
 
 class PayPalModule:
