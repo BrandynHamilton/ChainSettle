@@ -24,7 +24,7 @@ CLIENT_NAME='ChainSettle'
 PLAID_CLIENT_ID = os.getenv('PLAID_CLIENT_ID')
 PLAID_SANDBOX_KEY = os.getenv('PLAID_SANDBOX_KEY')
 
-assert PLAID_CLIENT_ID and PLAID_SANDBOX_KEY, "Missing Plaid credentials"
+# assert PLAID_CLIENT_ID and PLAID_SANDBOX_KEY, "Missing Plaid credentials"
 
 def create_plaid_client():
     configuration = plaid.Configuration(
