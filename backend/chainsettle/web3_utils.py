@@ -9,15 +9,19 @@ import requests
 from dotenv import load_dotenv, set_key
 import os
 import random
-# from web3.exceptions import 
+from web3.exceptions import TimeExhausted
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests import exceptions as req_ex
 from urllib3.exceptions import ProtocolError, SSLError
 
 from chainsettle.wallet import generate_wallet 
+from chainsettle.metadata import SUPPORTED_NETWORKS
 
 def network_func(PRIVATE_KEY, network='ethereum',ALCHEMY_API_KEY=None):
+    if network not in SUPPORTED_NETWORKS:
+        raise Exception(f"Network {network} not supported. Supported networks are: {SUPPORTED_NETWORKS}")
+    
     # Compose Gateway URLs
     if network == 'ethereum':
         if ALCHEMY_API_KEY is None:
@@ -26,10 +30,21 @@ def network_func(PRIVATE_KEY, network='ethereum',ALCHEMY_API_KEY=None):
             try:
                 GATEWAY = f"https://eth-sepolia.g.alchemy.com/v2/{ALCHEMY_API_KEY}"
             except Exception as e:
-                print(f"Failed to connect to Alchemy: {e}")
+                print(f"Failed to connect to Alchemy (Ethereum): {e}")
                 GATEWAY = 'https://eth-sepolia.public.blastapi.io'
+
+    elif network == 'base':
+        if ALCHEMY_API_KEY is None:
+            GATEWAY = 'https://base-sepolia.public.blastapi.io'
+        else:
+            try:
+                GATEWAY = f"https://base-sepolia.g.alchemy.com/v2/{ALCHEMY_API_KEY}"
+            except Exception as e:
+                print(f"Failed to connect to Alchemy (Base): {e}")
+                GATEWAY = 'https://base-sepolia.public.blastapi.io'
+
     elif network == 'blockdag':
-        GATEWAY = f"https://rpc.primordial.bdagscan.com/"
+        GATEWAY = 'https://rpc.primordial.bdagscan.com/'
 
     w3 = Web3(Web3.HTTPProvider(GATEWAY))
 

@@ -9,7 +9,8 @@ ARG BUILD_TIMESTAMP
 ENV GIT_COMMIT_HASH=$GIT_COMMIT
 ENV BUILD_TIME=$BUILD_TIMESTAMP
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install -e .
 
 EXPOSE 5045
 CMD ["python", "-u", "main.py"]

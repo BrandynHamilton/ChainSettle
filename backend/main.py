@@ -56,6 +56,7 @@ for network, cfg in config.items():
 
 assert ALCHEMY_API_KEY and PRIVATE_KEY, "Missing Gateway API Key and Wallet Private Key"
 
+# Helper functions for onchain settlement registration and attestation
 def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, metadata):
     print(f'tx: {tx}')
     settlement_type = tx.get('settlement_type', 'unknown')
@@ -150,7 +151,7 @@ def update_settlement_info(settlement_id: str, settlement_info: dict):
     print(f"[cache] Saved settlement_info and updated tx history for {settlement_id}")
 
 def get_settlement_info(settlement_id: str):
-    # Store latest settlement info under its ID
+    """Store retrieves latest settlement info by ID"""
 
     settlement_info = cache.get(settlement_id, None)
 
@@ -202,12 +203,20 @@ def create_app():
 
     os.makedirs(SETTLEMENT_STORE_PATH, exist_ok=True)
 
+    @app.route("/")
+    def index():
+        return "<h1>ChainSettle API</h1><p>Welcome to the ChainSettle API!</p>"
+
     @app.route("/plaid")
     def link_page():
         return render_template("plaid.html")
 
     @app.route("/add_validator", methods=["POST"])
     def add_validator_endpoint():
+        """
+        This endpoint is called by the validator node to register itself on the network.
+        It requires a one-time API key to prevent abuse.
+        """
         global SECRET_API_KEY
 
         data = request.get_json()
@@ -222,6 +231,12 @@ def create_app():
 
         if not network or not validator_address:
             return jsonify({"error": "Missing network or validator address"}), 400
+        
+        if network not in SUPPORTED_NETWORKS:
+            return jsonify({"error": f"Unsupported network: {network}"}), 400
+        
+        if not validator_address.startswith("0x") or len(validator_address) != 42:
+            return jsonify({"error": "Invalid validator address"}), 400
 
         try:
             # Remove the API key to prevent reuse
@@ -283,14 +298,14 @@ def create_app():
 
     @app.route('/paypal-success', methods=["GET"])
     def paypal_success():
+        """
+        This endpoint is called by PayPal after the user approves the payment.
+        It captures the payment and attests it onchain.
+        """
         order_id = request.args.get("token")
-
-        print(F'order_id: {order_id}')
 
         if not order_id:
             return "Missing token (order ID)", 400
-
-        # breakpoint()
 
         # Find associated settlement
         settlement_id = find_settlement_id_by_order(order_id, cache)
@@ -316,6 +331,7 @@ def create_app():
         try:
             # Capture the payment
             capture_details = paypal.capture_order(order_id)
+            print(f'capture_details: {capture_details}')
             capture_id = capture_details["purchase_units"][0]["payments"]["captures"][0]["id"]
             net_amount = capture_details["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["net_amount"]["value"]
 
@@ -343,7 +359,7 @@ def create_app():
 
                 update_settlement_info(settlement_id, settlement_info)
 
-                if notify_email:
+                if notify_email not in [None, 'None']:
                     subject, body = prepare_email_response(settlement_info)
                     send_email_notification(subject, body, notify_email)
 
@@ -380,10 +396,14 @@ def create_app():
     
     @app.route("/api/register_settlement", methods=["POST"])
     def register_settlement():
+        """
+        This endpoint is called by the client to register a new settlement. 
+        """
+
         data = request.get_json()
         settlement_id = data.get("settlement_id")
         network = data.get("network")
-        settlement_type = data.get("settlement_type")  # plaid or github
+        settlement_type = data.get("settlement_type")
         notify_email = data.get('notify_email', None)
         owner = data.get('owner')
         repo = data.get('repo')
@@ -392,6 +412,15 @@ def create_app():
         branch = data.get('branch', 'main')
         public_token = data.get("public_token", None)
         recipient_email = data.get('recipient_email')
+
+        if settlement_type not in SUPPORTED_APIS:
+            return jsonify({"error": f"Unsupported settlement type: {settlement_type}. Supported types are {SUPPORTED_APIS}"}), 400
+
+        if not settlement_id or not network or not settlement_type:
+            return jsonify({"error": "settlement_id, network, and type are required"}), 400
+        
+        if network not in SUPPORTED_NETWORKS:
+            return jsonify({"error": f"network unsupported, must choose one of {SUPPORTED_NETWORKS}"}), 400
 
         REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
         url = config[network]['explorer_url']
@@ -406,15 +435,6 @@ def create_app():
         ok, msg = validate_settlement_id_before_registration(settlement_id, contract)
         if not ok:
             return jsonify({"error": msg}), 400
-
-        if settlement_type not in SUPPORTED_APIS:
-            return jsonify({"error": f"Unsupported settlement type: {settlement_type}. Supported types are {SUPPORTED_APIS}"}), 400
-
-        if not settlement_id or not network or not settlement_type:
-            return jsonify({"error": "settlement_id, network, and type are required"}), 400
-        
-        if network not in ['ethereum','blockdag']:
-            return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
         
         try: 
             amount = float(data.get('amount', 0))
@@ -433,7 +453,7 @@ def create_app():
             "settlement_id": settlement_id,
             "network": network,
             "settlement_type": settlement_type,
-            "timestamp": dt.datetime.utcnow().isoformat(),
+            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             'metadata': metadata,
             'amount':amount,
             'notify_email': notify_email,
@@ -471,8 +491,6 @@ def create_app():
                 "item_id": item_id
             })
         elif settlement_type == 'paypal':
-            print(f'recipient_email: {recipient_email}')
-            print(f'amount: {amount}')
             print(f'Registering PayPal settlement with ID: {settlement_id} to {recipient_email}')
             if not all([recipient_email]):
                 return jsonify({"error": "PayPal attestation requires recipient_email and amount"}), 400
@@ -488,6 +506,9 @@ def create_app():
 
     @app.route('/api/initiate_attestation', methods=['POST'])
     def init_req():
+        """
+        This endpoint is called by the client to initiate the attestation process.
+        It checks the settlement ID and type, and then calls the appropriate function."""
         data = request.get_json()
 
         settlement_id = data.get("settlement_id")
@@ -515,7 +536,7 @@ def create_app():
         url = config[network]['explorer_url']
         REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
 
-        print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS},   URL: {url}')
+        print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS}, URL: {url}')
 
         w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
 
@@ -525,18 +546,17 @@ def create_app():
         if not ok:
             return jsonify({"error": msg}), 400
 
-        if network not in ['ethereum', 'blockdag']:
+        if network not in SUPPORTED_NETWORKS:
             return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
 
         latest_block = w3.eth.get_block("latest")
         blocknumber = latest_block['number']
 
-        print(f"Account: {account.address}")
-
         base_response = {
             "settlement_id": settlement_id,
             "network": network,
             "settlement_type": settlement_type,
+            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
         }
 
         if settlement_type == 'github':
@@ -566,7 +586,6 @@ def create_app():
                 "branch": branch,
                 "tag_confirmed": tag_ok,
                 "file_confirmed": file_ok,
-                "timestamp": dt.datetime.utcnow().isoformat(),
                 "metadata": combined_metadata
             })
 
@@ -590,7 +609,7 @@ def create_app():
 
             update_settlement_info(settlement_id, response_payload)
 
-            if notify_email is not None:
+            if notify_email not in [None, 'None']:
                 subject, body = prepare_email_response(response_payload)
                 print(f'Sending email notification to {notify_email}')
                 send_email_notification(subject, body, notify_email)
@@ -643,7 +662,6 @@ def create_app():
 
         elif settlement_type == 'plaid':
             response_payload = base_response.copy()
-            print(f'settlement_info:{settlement_info}')
 
             try:
                 metadata = str(data.get('metadata', ""))
@@ -715,11 +733,10 @@ def create_app():
 
             status = wait_for_finalization_event(w3, contract, settlement_id)
             response_payload['finalStatus'] = status
-            print(f'Final Status: {status}')
 
             update_settlement_info(settlement_id, response_payload)
 
-            if notify_email is not None:
+            if notify_email not in [None, 'None']:
                 subject, body = prepare_email_response(response_payload)
                 print(f'Sending email notification to {notify_email}')
                 send_email_notification(subject, body, notify_email)

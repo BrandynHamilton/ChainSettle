@@ -30,7 +30,6 @@ password - 123
 
 python validator.py listen --network all --account 0x00Fc010339a338e00F77ce4fe8915675dCd476E9
 
-
 # Uses ENV Private Key
 python validator.py listen --network blockdag --new-wallet
 

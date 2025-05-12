@@ -19,6 +19,8 @@ def find_settlement_id_by_order(order_id: str, cache: Cache) -> str:
     Iterates through the diskcache and returns the first settlement_id
     where settlement_info['order_id'] matches the given order_id.
     """
+    print(f'[cache] Searching for order_id: {order_id}')
+
     for key in cache.iterkeys():
         settlement_info = cache.get(key)
         if isinstance(settlement_info, dict) and settlement_info.get("order_id") == order_id:

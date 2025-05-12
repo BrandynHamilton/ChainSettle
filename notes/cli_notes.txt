@@ -1,15 +1,3 @@
-# Request Init Commands
-
-python cli.py init-attest --settlement-type plaid --settlement-id a1szssd9ss45 --amount 250000 --network ethereum --metadata test --notify-email brandynhamilton@gmail.com --local
-
-python cli.py init-attest --settlement-type github --settlement-id abcde --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
-
-python cli.py init-attest --settlement-type github --settlement-id abc --network blockdag --metadata first_edition --local
-
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type plaid --settlement-id abcd123 --amount 150000  --metadata P2P_Trade --local --network blockdag
-
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type paypal --settlement-id 12345 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --local --network blockdag
-
 # Test Credentials for Plaid 
 
 Bank: First Platypus Bank 
@@ -21,12 +9,26 @@ password: pass_good
 sb-w7oqu40942591@personal.example.com
 1eh)_t_N
 
+# Request Attest Commands
+
+## github
+
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type github --settlement-id abc --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
+
+## plaid
+
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type plaid --settlement-id 123 --amount 150000  --metadata P2P_Trade --network base --local
+
+## paypal
+
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type paypal --settlement-id abc12345678 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --network base --local
+
 # Attest Commands
 
-for plaid
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id 12345 --metadata RWA09234 --local
+## Local Node
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id abc12345 --metadata RWA09234 --local
 
-for github
-python cli.py attest --settlement-id 5a5ssfaadd56ssds5sassadagssdsadss5ds5s --local
+## Akash Node
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id abc12345678 --metadata RWA09234 
 
-for paypal
+

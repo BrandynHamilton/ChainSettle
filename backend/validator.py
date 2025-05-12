@@ -9,7 +9,8 @@ import requests
 from dotenv import load_dotenv, set_key
 import sys
 
-from chainsettle import network_func, SUPPORTED_NETWORKS, is_validator,load_last_block, load_or_create_validator_key, start_listener
+from chainsettle import (network_func, SUPPORTED_NETWORKS, is_validator,
+                         load_last_block, load_or_create_validator_key, start_listener)
 
 # Load environment
 load_dotenv()
