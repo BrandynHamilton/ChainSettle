@@ -11,3 +11,4 @@ backend/settlements
 backend/arweave/arweave_keyfile.json
 backend/solidity/keystores
 backend/keystores
+*.venv

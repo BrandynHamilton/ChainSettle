@@ -13,22 +13,20 @@ sb-w7oqu40942591@personal.example.com
 
 ## github
 
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type github --settlement-id abc --network blockdag --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type github --settlement-id abc3456789 --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com 
+
+uv run python cli.py init-attest --settlement-type github --settlement-id abc34567895 --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
 
 ## plaid
 
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type plaid --settlement-id 123 --amount 150000  --metadata P2P_Trade --network base --local
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type plaid --settlement-id 123 --amount 150000  --metadata P2P_Trade --network base 
 
 ## paypal
 
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type paypal --settlement-id abc12345678 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --network base --local
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py init-attest --settlement-type paypal --settlement-id abc1234567897 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --network base 
 
-# Attest Commands
+# Attest Commands 
 
-## Local Node
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id abc12345 --metadata RWA09234 --local
-
-## Akash Node
-uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id abc12345678 --metadata RWA09234 
+uv --project C:\Users\brand\projects\chainsettle\core\backend run python cli.py attest --settlement-id abc1234567897 --metadata RWA09234 
 
 

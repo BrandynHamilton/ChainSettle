@@ -1,9 +1,10 @@
 from textwrap import indent
-from flask import Flask, jsonify, render_template, Blueprint, request, redirect
+from flask import Flask, jsonify, render_template, Blueprint, request, redirect, abort
 import os
 import requests
 import arweave
 from typing import Dict
+from functools import wraps
 
 import json
 import datetime as dt
@@ -43,6 +44,7 @@ ARWEAVE_NODE_URL = os.getenv('ARWEAVE_NODE_URL')
 ALCHEMY_API_KEY = os.getenv('ALCHEMY_API_KEY')
 PRIVATE_KEY = os.getenv('EVM_PRIVATE_KEY')
 SECRET_API_KEY = os.getenv("VALIDATOR_API_KEY")
+CACHE_API_KEY = os.getenv("CACHE_API_KEY")
 
 CONFIG_PATH = os.path.join(os.getcwd(), 'solidity','chainsettle_config.json')
 with open(CONFIG_PATH, "r") as f:
@@ -197,6 +199,15 @@ def validate_settlement_id_before_attestation(settlement_id: str, contract) -> t
         return False, f"Settlement ID '{settlement_id}' is already confirmed onchain."
     return True, "OK"
 
+def require_api_key(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        key = request.headers.get("X-API-KEY")
+        if key != CACHE_API_KEY:
+            abort(401, description="Invalid or missing API key")
+        return f(*args, **kwargs)
+    return decorated
+
 # Flask App Factory
 def create_app():
     app = Flask(__name__)
@@ -267,6 +278,7 @@ def create_app():
         })
 
     @app.route("/api/clear_settlement_cache", methods=["POST"])
+    @require_api_key
     def clear_settlement_cache():
         cleared_keys = list(cache.iterkeys())
         cache.clear()

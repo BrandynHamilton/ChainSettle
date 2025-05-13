@@ -1,48 +1,23 @@
-curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http://127.0.0.1:5045/api/initiate_attestation
-curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"plaid\"}" http://127.0.0.1:5045/api/initiate_attestation
-curl -H "Content-Type: application/json" -X POST -d "{\"type\":\"github\", \"owner\":\"BrandynHamilton\", \"repo\":\"liquid_domains\", \"tag\":\"v1.0.0\", \"path\":\"static/onchain_valuation.js\", \"branch\":\"main\"}" http://127.0.0.1:5045/api/initiate_attestation
-
-curl -H "Content-Type: application/json" -X POST -d "{\"type\": \"wire\"}" http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/initiate_attestation
-
-curl -H "Content-Type: application/json" -X GET http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/health
-
-curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/create_link_token
-
-curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/a5a5ssfaadd56ssds5sassadagssdsadss5ds5s"
-
-curl -H "Content-Type: application/json" -X GET http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/api/escrows
+# Returns all logged settlements
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/settlements
 
+# Returns all registered validators 
+
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/validator_list
+
+# Returns supported settlement types
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/settlement_types
 
+# Confirms if API is up or not 
+
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/health
 
+# Clears node cached data (requires key)
 
-python cli.py init-attest --type plaid --settlement-id 598 --amount 100 --metadata test2 --local --network ethereum
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/clear_settlement_cache -H "X-API-KEY: %API_KEY%"
 
-curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/598"
-
-curl "http://127.0.0.1:5045/api/attest/paypal-callback?token=2Y57138742264934M"
-
-curl -X POST http://localhost:5045/api/clear_settlement_cache
-
-curl -X POST http://127.0.0.1:5480/post-data?data=test
-
-curl -H "Content-Type: application/json" -X POST -d "{\"address\": \"0xE6A5aD9b28Ee9E7B04aC51c397658cF2D9F821F3\", \"network\":\"blockdag\"}" http://127.0.0.1:5000/faucet
-curl "http://127.0.0.1:5000/faucet_balance?network=blockdag"
-
-curl -H "Content-Type: application/json" -X POST -d "{\"data\":\"test\"}" http://127.0.0.1:5480/post-data
-
-curl "http://127.0.0.1:5480/get-data/OGbgKpAiqcVGPmvLI8zeWuNqVsqkvXu2H2dI1RwAKvE"
-
-curl -H "Content-Type: application/json" -X GET http://fft814qnlhfnldp72bq86l13n4.ingress.paradigmapolitico.online/api/get_settlement/abc
-
-curl -H "Content-Type: application/json" -X GET http://fft814qnlhfnldp72bq86l13n4.ingress.paradigmapolitico.online/api/validator_list
-
-curl -H "Content-Type: application/json" -X GET http://fft814qnlhfnldp72bq86l13n4.ingress.paradigmapolitico.online/api/settlements
 
 
 

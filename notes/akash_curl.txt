@@ -1,0 +1,19 @@
+# Returns all logged settlements
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/settlements
+
+# Returns all registered validators 
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/validator_list
+
+# Returns supported settlement types
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/settlement_types
+
+# Confirms if API is up or not 
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/health
+
+# Clears node cached data (requires api key)
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/clear_settlement_cache -H "X-API-KEY: %API_KEY%"
