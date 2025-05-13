@@ -29,7 +29,7 @@ cd chainsettle
 
 # Install via uv
 pip install uv  # Only if not already installed
-uv pip install ./backend/chainsettle
+uv pip install ./backend
 ```
 
 ---
