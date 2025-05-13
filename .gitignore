@@ -1,4 +1,4 @@
-.env
+*.env
 chainsettle_env/
 *.ipynb
 *.egg-info
@@ -10,4 +10,5 @@ notes/deploy.txt
 backend/settlements
 backend/arweave/arweave_keyfile.json
 backend/solidity/keystores
-backend/solidity/keystores/
+backend/keystores
+*.venv

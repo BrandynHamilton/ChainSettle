@@ -10,7 +10,8 @@ from web3 import Web3
 from solcx import compile_source, install_solc, set_solc_version
 from getpass import getpass
 
-from chainsettle import network_func, deploy_contract, SUPPORTED_NETWORKS, add_validator, encrypt_keystore, create_wallet, start_listener, get_validator_list
+from chainsettle import (network_func, deploy_contract, SUPPORTED_NETWORKS, add_validator, encrypt_keystore, 
+                         BLOCK_EXPLORER_MAP, create_wallet, start_listener, get_validator_list)
 
 # Load environment variables
 load_dotenv()
@@ -65,7 +66,7 @@ def main(nodes, only_validators, allowlist):
             print(f"Skipping contract deployment on {network}...")
 
         config[network] = {
-            'explorer_url': 'https://sepolia.etherscan.io/tx/' if network == 'ethereum' else 'https://primordial.bdagscan.com/tx/',
+            'explorer_url': BLOCK_EXPLORER_MAP.get(network),
             'registry_addresses': {
                 'SettlementRegistry': settlement_contract_address,
                 'ValidatorRegistry': validator_contract_address,

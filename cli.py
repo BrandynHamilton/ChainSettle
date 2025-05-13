@@ -14,7 +14,7 @@ from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS
 
 load_dotenv()
 
-BACKEND_URL = os.getenv('BACKEND_URL', "http://fsoh913eg59c590vufv3qkhod0.ingress.paradigmapolitico.online/") # Defaults to main Akash node 
+BACKEND_URL = os.getenv('BACKEND_URL', "https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/") # Defaults to main Akash node 
 LOCAL_URL = os.getenv('LOCAL_URL')
 
 def poll_for_settlement(settlement_id, max_retries=20, poll_interval=10):
@@ -76,7 +76,7 @@ def cli():
 @click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
 def init_attest(settlement_type, settlement_id, amount, network, owner, repo, tag, path, branch, metadata, recipient_email, notify_email, local):
     """
-    Initializes the Plaid Link flow for a seller. Generates a link_token and opens a browser page.
+    Initializes the attestation process.
     """
 
     global BACKEND_URL
@@ -175,13 +175,15 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
 @click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
 def attest(settlement_id, metadata, local):
     """
-    Submit attestation request (plaid or github).
+    Submits the attestation request.
     """
 
     global BACKEND_URL
 
     if local:
         BACKEND_URL = LOCAL_URL or "http://localhost:5045"
+
+    print(f'Using backend URL: {BACKEND_URL}')
 
     payload = {}
 

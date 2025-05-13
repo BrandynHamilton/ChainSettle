@@ -1,6 +1,5 @@
-docker build -t digitalgold1856/chainsettle-mock-api .
-docker push digitalgold1856/chainsettle-mock-api
+docker build -t brandynham/chainsettle-api .
 
 for /f %i in ('powershell -Command "Get-Date -Format yyyyMMddHHmmss"') do set TAG=v0.1.2-%i
-docker tag digitalgold1856/chainsettle-mock-api digitalgold1856/chainsettle-mock-api:%TAG%
-docker push digitalgold1856/chainsettle-mock-api:%TAG%
+docker tag brandynham/chainsettle-api brandynham/chainsettle-api:%TAG%
+docker push brandynham/chainsettle-api:%TAG%

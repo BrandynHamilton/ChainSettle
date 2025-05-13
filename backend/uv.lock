@@ -1156,6 +1156,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "arweave-python-client" },
+    { name = "click" },
     { name = "diskcache" },
     { name = "flask", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, extra = ["async"], marker = "python_full_version < '3.8'" },
     { name = "flask", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, extra = ["async"], marker = "python_full_version == '3.8.*'" },
@@ -1183,6 +1184,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "arweave-python-client" },
+    { name = "click" },
     { name = "diskcache", specifier = ">=5.6.3" },
     { name = "flask", extras = ["async"] },
     { name = "numpy" },
