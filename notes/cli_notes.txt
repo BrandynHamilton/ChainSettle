@@ -21,10 +21,10 @@ uv run python cli.py init-attest --settlement-type plaid --settlement-id 123 --a
 
 ## paypal
 
-uv run python cli.py init-attest --settlement-type paypal --settlement-id abc1234567897 --amount 25000 --recipient-email treasuryops@defiprotocol.com --metadata Token_Purchase --network base 
+uv run python cli.py init-attest --settlement-type paypal --settlement-id paypaltest1234 --amount 25000 --recipient-email treasuryops@defiprotocol.com --network base 
 
 # Attest Commands 
 
-uv run python run python cli.py attest --settlement-id abc1234567897 --metadata RWA09234 
+uv run python cli.py attest --settlement-id paypaltest1234 
 
 
