@@ -62,7 +62,7 @@ uv run python cli.py init-attest --settlement-type paypal --settlement-id 678 --
 ### attest: Submit the attestation
 
 ```bash
-uv run python cli.py attest --settlement-id 123
+uv run python cli.py attest --settlement-id 123 
 
 ```
 - For `paypal`, it will return a payment URL to make the specified payment via PayPal. 
@@ -169,17 +169,17 @@ curl -X POST https://.../api/register_settlement \
 
 | Network            | Address                                      |
 |--------------------|----------------------------------------------|
-| Sepolia Ethereum   | `0x5b31C9a0AFF568749629F9e16b0Cd6E57794d4D5` |
-| Sepolia Base       | `0x8924aa4F75634Cd3c53258C5C998A137FE170b4b` |
-| BlockDAG Testnet   | `0x607B24cfBfcCc073B12A610b3950aEE70619e53C` |
+| Sepolia Ethereum   | `0xca21440B3A3840813B78ba69b59e76075b3d1F03` |
+| Sepolia Base       | `0x14bE739B31aC9808F70FDB60fC56dd337b6CCcbf` |
+| BlockDAG Testnet   | `0x3bfdB5af505E2b1ef8A7944B8D3BeB1B695520A2` |
 
 ### Validator Registry
 
 | Network            | Address                                      |
 |--------------------|----------------------------------------------|
-| Sepolia Ethereum   | `0x8A37b540eB69C919A09Ae21b20EF43825f650522` |
-| Sepolia Base       | `0x837351fFA11fF3C4058d0C1A5d47f4B8b87c67cC` |
-| BlockDAG Testnet   | `0x93020601DEfaB09B18da0409833D79F34549f3cE` |
+| Sepolia Ethereum   | `0xe5bD26cF68A975f023c4bCeb634B1bCb066DE726` |
+| Sepolia Base       | `0xa345118C312Af74312130DD35da7AE2f1E507108` |
+| BlockDAG Testnet   | `0x19f7EBdc6558896698E55F9ed7451985548fAD1E` |
 
 ### ChainSettle Attest Node
 

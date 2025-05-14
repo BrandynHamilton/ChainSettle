@@ -289,8 +289,22 @@ def create_app():
 
     @app.route("/api/settlements", methods=["GET"])
     def list_settlements():
-        ids = list(cache.iterkeys())
-        return jsonify({"settlement_ids": ids})
+        # ids = list(cache.iterkeys())
+        all_ids = []
+        for net in SUPPORTED_NETWORKS:
+            w3, account = network_func(network=net, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
+            REGISTRY_ADDRESS = config[net]['registry_addresses']['SettlementRegistry']
+            REGISTRY_ABI = config[net]['abis']['SettlementRegistry']
+            contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
+            try:
+                ids = contract.functions.getSettlementIds().call()
+                print(f"Settlement IDs for {net}: {ids}")
+            except Exception as e:  
+                print(f"Error fetching settlement IDs for {net}: {e}")
+                return jsonify({"error": f"Error fetching settlement IDs for {net}: {e}"}), 500
+            all_ids.extend(ids)
+
+        return jsonify({"settlement_ids": all_ids}), 200
 
     @app.route("/api/get_settlement/<settlement_id>", methods=["GET"])
     def get_settlement(settlement_id):

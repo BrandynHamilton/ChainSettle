@@ -2,8 +2,8 @@
   "ethereum": {
     "explorer_url": "https://sepolia.etherscan.io/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x5b31C9a0AFF568749629F9e16b0Cd6E57794d4D5",
-      "ValidatorRegistry": "0x8A37b540eB69C919A09Ae21b20EF43825f650522"
+      "SettlementRegistry": "0xca21440B3A3840813B78ba69b59e76075b3d1F03",
+      "ValidatorRegistry": "0xe5bD26cF68A975f023c4bCeb634B1bCb066DE726"
     },
     "abis": {
       "SettlementRegistry": [
@@ -178,6 +178,19 @@
         },
         {
           "inputs": [],
+          "name": "getSettlementIds",
+          "outputs": [
+            {
+              "internalType": "string[]",
+              "name": "",
+              "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "getValidatorCount",
           "outputs": [
             {
@@ -287,6 +300,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIds",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
             }
           ],
           "stateMutability": "view",
@@ -497,8 +529,8 @@
   "blockdag": {
     "explorer_url": "https://primordial.bdagscan.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x607B24cfBfcCc073B12A610b3950aEE70619e53C",
-      "ValidatorRegistry": "0x93020601DEfaB09B18da0409833D79F34549f3cE"
+      "SettlementRegistry": "0x3bfdB5af505E2b1ef8A7944B8D3BeB1B695520A2",
+      "ValidatorRegistry": "0x19f7EBdc6558896698E55F9ed7451985548fAD1E"
     },
     "abis": {
       "SettlementRegistry": [
@@ -673,6 +705,19 @@
         },
         {
           "inputs": [],
+          "name": "getSettlementIds",
+          "outputs": [
+            {
+              "internalType": "string[]",
+              "name": "",
+              "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "getValidatorCount",
           "outputs": [
             {
@@ -782,6 +827,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIds",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
             }
           ],
           "stateMutability": "view",
@@ -992,8 +1056,8 @@
   "base": {
     "explorer_url": "https://base-sepolia.blockscout.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x8924aa4F75634Cd3c53258C5C998A137FE170b4b",
-      "ValidatorRegistry": "0x837351fFA11fF3C4058d0C1A5d47f4B8b87c67cC"
+      "SettlementRegistry": "0x14bE739B31aC9808F70FDB60fC56dd337b6CCcbf",
+      "ValidatorRegistry": "0xa345118C312Af74312130DD35da7AE2f1E507108"
     },
     "abis": {
       "SettlementRegistry": [
@@ -1168,6 +1232,19 @@
         },
         {
           "inputs": [],
+          "name": "getSettlementIds",
+          "outputs": [
+            {
+              "internalType": "string[]",
+              "name": "",
+              "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "getValidatorCount",
           "outputs": [
             {
@@ -1277,6 +1354,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIds",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
             }
           ],
           "stateMutability": "view",
