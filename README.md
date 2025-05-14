@@ -52,7 +52,7 @@ uv run python cli.py init-attest --settlement-type plaid --settlement-id 123 --a
 # For github
 uv run python cli.py init-attest --settlement-type github --settlement-id 345 --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --network ethereum
 
-#For paypal
+# For paypal
 uv run python cli.py init-attest --settlement-type paypal --settlement-id 678 --amount 25000 --recipient-email treasuryops@defiprotocol.com --network blockdag 
 ```
 
