@@ -4,7 +4,8 @@
 ChainSettle is a Web3 oracle system that verifies off-chain actions (e.g., wire transfers, GitHub commits, PayPal payments) and attests them on-chain. This document describes the available REST API endpoints.
 
 ## Base URL
-All endpoints are relative to the application root, e.g., `https://<host>:<port>/`.
+All endpoints are relative to the following base URL:
+[https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org](https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org)
 
 ## Authentication
 - `POST /api/clear_settlement_cache` requires header `X-API-KEY` = `<CACHE_API_KEY>`.
