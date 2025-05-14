@@ -16,8 +16,10 @@ contract SettlementRegistry {
         string settlementType;
         Status status;
         string metadata; // could store tag, docURI, etc.
-        uint256 amount; // optional; use 0 if not needed
+        uint256 amount;  // optional; use 0 if not needed
     }
+
+    string[] public settlementIds;
 
     mapping(string => Settlement) public settlements;
     mapping(string => mapping(address => bool)) public hasVoted;  // settlementId => voter => hasVoted
@@ -49,6 +51,7 @@ contract SettlementRegistry {
     ) external onlyOwner {
         require(bytes(settlements[settlementId].settlementId).length == 0, "Already initialized");
 
+        // Store the new settlement
         settlements[settlementId] = Settlement({
             settlementId: settlementId,
             settlementType: settlementType,
@@ -56,6 +59,9 @@ contract SettlementRegistry {
             metadata: metadata,
             amount: amount
         });
+
+        // --- New: record this ID for enumeration
+        settlementIds.push(settlementId);
 
         emit SettlementInitialized(settlementId, settlementType, metadata, amount);
     }
@@ -110,6 +116,11 @@ contract SettlementRegistry {
         }
     }
 
+    /// @notice Return all initialized settlement IDs
+    function getSettlementIds() external view returns (string[] memory) {
+        return settlementIds;
+    }
+
     function isValidator(address _addr) public view returns (bool) {
         return validatorRegistry.isValidator(_addr);
     }
@@ -117,5 +128,4 @@ contract SettlementRegistry {
     function getValidatorCount() public view returns (uint256) {
         return validatorRegistry.getValidatorCount();
     }
-
 }

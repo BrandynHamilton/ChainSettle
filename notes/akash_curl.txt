@@ -17,3 +17,5 @@ curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5
 # Clears node cached data (requires api key)
 
 curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/clear_settlement_cache -H "X-API-KEY: %API_KEY%"
+
+curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/get_settlement/123"
