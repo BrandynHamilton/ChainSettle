@@ -5,7 +5,7 @@ ChainSettle is a Web3 oracle system that verifies off-chain actions (e.g., wire 
 
 ## Base URL
 All endpoints are relative to the following base URL:
-[https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org](https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org)
+[https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/](https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/)
 
 ## Authentication
 - `POST /api/clear_settlement_cache` requires header `X-API-KEY` = `<CACHE_API_KEY>`.

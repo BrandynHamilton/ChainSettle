@@ -75,12 +75,12 @@ Once the action is verified (transaction or GitHub tag/file), ChainSettle posts 
 
 ### init-attest
 
-A user or program should call https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/register_settlement with at least the following:
+A user or program should call https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/api/register_settlement with at least the following:
 - settlement_id (unique string ID)
 - network (Ethereum, Base, or BlockDAG)
 - settlement_type (Plaid, PayPal, or Github)
 
-For plaid, first call `https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/create_link_token` to obtain a plaid public token. 
+For plaid, first call `https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/api/create_link_token` to obtain a plaid public token. 
 
 The following are optional parameters:
 - amount (if not passed, defaults to 0)
@@ -106,7 +106,7 @@ To programmatically wait until a settlement has been processed onchain, use the 
 
 ### attest
 
-A user or program should call https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/initiate_attestation with the following:
+A user or program should call https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/api/initiate_attestation with the following:
 - settlement_id 
 
 The following are optional parameters
@@ -186,7 +186,7 @@ curl -X POST https://.../api/register_settlement \
 | Type                  | Value                                                                 |
 |-----------------------|-----------------------------------------------------------------------|
 | Address               | `0x6fBc41ea9cFF9f1C2DCC8F61e190623d0B1CD7b3`                          |
-| URL                   | [Visit](https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/) |
+| URL                   | [Visit](https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/) |
 
 ### ChainSettle Validator Node
 
