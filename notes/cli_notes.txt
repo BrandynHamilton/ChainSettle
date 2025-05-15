@@ -13,18 +13,18 @@ sb-w7oqu40942591@personal.example.com
 
 ## github
 
-uv run python cli.py init-attest --settlement-type github --settlement-id abc34567895 --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com --local
+uv run python cli.py init-attest --settlement-type github --settlement-id 1abc34567895 --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js --metadata first_edition --notify-email brandynhamilton@gmail.com 
 
 ## plaid
 
-uv run python cli.py init-attest --settlement-type plaid --settlement-id 123 --amount 150000  --metadata P2P_Trade --network base 
+uv run python cli.py init-attest --settlement-type plaid --settlement-id 123abc --amount 150000  --metadata P2P_Trade --network base 
 
 ## paypal
 
-uv run python cli.py init-attest --settlement-type paypal --settlement-id paypaltest1234 --amount 25000 --recipient-email treasuryops@defiprotocol.com --network base 
+uv run python cli.py init-attest --settlement-type paypal --settlement-id paypaltest12345 --amount 25000 --recipient-email treasuryops@defiprotocol.com --network base 
 
 # Attest Commands 
 
-uv run python cli.py attest --settlement-id paypaltest1234 
+uv run python cli.py attest --settlement-id 1abc34567895 
 
 
