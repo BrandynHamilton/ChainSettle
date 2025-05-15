@@ -1,5 +1,7 @@
 # Returns all logged settlements
 
+Can also use https://app.chainsettle.tech 
+
 curl -H "Content-Type: application/json" -X GET https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/api/settlements
 
 # Returns all registered validators 

@@ -2,9 +2,12 @@
 
 ## Overview
 ChainSettle is a Web3 oracle system that verifies off-chain actions (e.g., wire transfers, GitHub commits, PayPal payments) and attests them on-chain. This document describes the available REST API endpoints.
-
+ 
 ## Base URL
 All endpoints are relative to the following base URL:
+[https://app.chainsettle.tech/](https://app.chainsettle.tech/)
+
+This URL may also be used:
 [https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/](https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/)
 
 ## Authentication

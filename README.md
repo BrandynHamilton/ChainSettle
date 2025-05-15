@@ -74,6 +74,9 @@ Once the action is verified (transaction or GitHub tag/file), ChainSettle posts 
 ## Using the API
 
 All endpoints are relative to the following base URL:
+[https://app.chainsettle.tech/](https://app.chainsettle.tech/)
+
+This URL can also be used:
 [https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/](https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/)
 
 ### init-attest
@@ -189,7 +192,7 @@ curl -X POST https://.../api/register_settlement \
 | Type                  | Value                                                                 |
 |-----------------------|-----------------------------------------------------------------------|
 | Address               | `0x6fBc41ea9cFF9f1C2DCC8F61e190623d0B1CD7b3`                          |
-| URL                   | [Visit](https://gdvsns5685f696ufl48m643lc4.ingress.akash-palmito.org/) |
+| URL                   | [Visit](https://app.chainsettle.tech/) |
 
 ### ChainSettle Validator Node
 
