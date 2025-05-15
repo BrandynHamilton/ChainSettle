@@ -14,7 +14,7 @@ from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS
 
 load_dotenv()
 
-BACKEND_URL = os.getenv('BACKEND_URL', "https://u2g3350ib1b5120end61cih5l8.ingress.akash-palmito.org/") # Defaults to main Akash node 
+BACKEND_URL = os.getenv('BACKEND_URL', "https://app.chainsettle.tech/") # Defaults to main Akash node 
 LOCAL_URL = os.getenv('LOCAL_URL')
 
 def poll_for_settlement(settlement_id, max_retries=20, poll_interval=10):
