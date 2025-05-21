@@ -7,115 +7,127 @@ interface IValidatorRegistry {
 }
 
 contract SettlementRegistry {
-    address public owner;
-
     enum Status { Unverified, Confirmed, Failed }
 
     struct Settlement {
         string settlementId;
         string settlementType;
-        Status status;
-        string metadata; // could store tag, docURI, etc.
-        uint256 amount;  // optional; use 0 if not needed
+        Status status;     // last owner proposal
+        string metadata;
+        uint256 amount;
     }
-
-    string[] public settlementIds;
-
-    mapping(string => Settlement) public settlements;
-    mapping(string => mapping(address => bool)) public hasVoted;  // settlementId => voter => hasVoted
-    mapping(string => uint256) public confirmVotes;  // settlementId => number of confirms
-    mapping(string => uint256) public rejectVotes;   // settlementId => number of rejects
-    mapping(string => bool) public finalized;        // settlementId => finalized?
-
-    event SettlementInitialized(string settlementId, string settlementType, string metadata, uint256 amount);
-    event Attested(string settlementId, string settlementType, Status status, string metadata, uint256 amount);
-    event SettlementFinalized(string settlementId, Status finalStatus);
 
     IValidatorRegistry public validatorRegistry;
+    address public owner;
 
-    constructor(address _validatorRegistry) {
-        owner = msg.sender;
-        validatorRegistry = IValidatorRegistry(_validatorRegistry);
-    }
+    // Owner proposals
+    mapping(string => Settlement) public settlements;
+    string[] public settlementIds;
+
+    // Voting state
+    mapping(string => mapping(address => bool))  public hasVoted;
+    mapping(string => uint256)                   public agreeVotes;
+    mapping(string => uint256)                   public disagreeVotes;
+    mapping(string => bool)                      public finalized;
+    mapping(string => bool)                      public confirmedLock;  // lock only on true Confirmed
+
+    // Proposal / vote nonces, to allow re-voting on new proposals
+    mapping(string => uint256)                   public proposalNonce;
+    mapping(string => mapping(address => uint256)) public lastVotedNonce;
+
+    event SettlementInitialized(string indexed settlementId, string settlementType, string metadata, uint256 amount);
+    event Attested(            string indexed settlementId, string settlementType, Status status,   string metadata, uint256 amount);
+    event SettlementValidated( string indexed settlementId, Status finalStatus);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Unauthorized");
         _;
     }
 
+    constructor(address _validatorRegistry) {
+        owner = msg.sender;
+        validatorRegistry = IValidatorRegistry(_validatorRegistry);
+    }
+
     function initAttest(
         string calldata settlementId,
         string calldata settlementType,
         string calldata metadata,
-        uint256 amount
+        uint256      amount
     ) external onlyOwner {
         require(bytes(settlements[settlementId].settlementId).length == 0, "Already initialized");
-
-        // Store the new settlement
-        settlements[settlementId] = Settlement({
-            settlementId: settlementId,
-            settlementType: settlementType,
-            status: Status.Unverified,
-            metadata: metadata,
-            amount: amount
-        });
-
-        // --- New: record this ID for enumeration
+        settlements[settlementId] = Settlement(settlementId, settlementType, Status.Unverified, metadata, amount);
         settlementIds.push(settlementId);
-
         emit SettlementInitialized(settlementId, settlementType, metadata, amount);
     }
 
     function attest(
         string calldata settlementId,
         string calldata settlementType,
-        Status status,
+        Status        statusProposal,
         string calldata metadata,
-        uint256 amount
+        uint256       amount
     ) external onlyOwner {
-        require(bytes(settlements[settlementId].settlementId).length != 0, "Not initialized");
-        require(settlements[settlementId].status != Status.Confirmed, "Already confirmed");
+        require(bytes(settlements[settlementId].settlementId).length != 0,     "Not initialized");
+        require(!confirmedLock[settlementId],                                  "Already confirmed");
 
-        settlements[settlementId] = Settlement({
-            settlementId: settlementId,
-            settlementType: settlementType,
-            status: status,
-            metadata: metadata,
-            amount: amount
-        });
+        // Update owner’s proposal
+        settlements[settlementId] = Settlement(settlementId, settlementType, statusProposal, metadata, amount);
 
-        emit Attested(settlementId, settlementType, status, metadata, amount);
+        // Reset voting state for this new proposal
+        proposalNonce[settlementId] += 1;
+        agreeVotes[settlementId]    = 0;
+        disagreeVotes[settlementId] = 0;
+        finalized[settlementId]     = false;
+
+        emit Attested(settlementId, settlementType, statusProposal, metadata, amount);
     }
 
-    function voteOnSettlement(string calldata settlementId, bool confirm) external {
-        require(isValidator(msg.sender), "Not a validator");
-        require(!hasVoted[settlementId][msg.sender], "Already voted");
+    function voteOnSettlement(string calldata settlementId, bool agree) external {
+        require(validatorRegistry.isValidator(msg.sender), "Not a validator");
+        require(lastVotedNonce[settlementId][msg.sender] < proposalNonce[settlementId],
+                "Already voted this round");
         require(!finalized[settlementId], "Already finalized");
 
-        hasVoted[settlementId][msg.sender] = true;
-
-        if (confirm) {
-            confirmVotes[settlementId] += 1;
+        // record vote
+        lastVotedNonce[settlementId][msg.sender] = proposalNonce[settlementId];
+        if (agree) {
+            agreeVotes[settlementId] += 1;
         } else {
-            rejectVotes[settlementId] += 1;
+            disagreeVotes[settlementId] += 1;
         }
 
-        uint256 totalValidators = getValidatorCount();
-        uint256 totalVotes = confirmVotes[settlementId] + rejectVotes[settlementId];
-        uint256 minVotes = totalValidators < 3 ? totalValidators : 3;
-        uint256 threshold = (2 * totalValidators) / 3 + 1;
+        uint256 totalValidators = validatorRegistry.getValidatorCount();
+        // ceil(2/3 * totalValidators) = (2*TV + 2)/3
+        uint256 threshold = (2 * totalValidators + 2) / 3;
 
-        if (totalVotes >= minVotes) {
-            finalized[settlementId] = true;
-            if (confirmVotes[settlementId] >= threshold) {
-                settlements[settlementId].status = Status.Confirmed;
-            } else {
-                settlements[settlementId].status = Status.Failed;
-            }
-            emit SettlementFinalized(settlementId, settlements[settlementId].status);
+        // finalize as soon as one side hits threshold
+        if (agreeVotes[settlementId] >= threshold) {
+            _finalize(settlementId, true);
+        } else if (disagreeVotes[settlementId] >= threshold) {
+            _finalize(settlementId, false);
         }
     }
 
+    function _finalize(string calldata settlementId, bool didAgree) private {
+        finalized[settlementId] = true;
+
+        // Only lock further attest() calls when the owner truly proposed Confirmed
+        if (didAgree && settlements[settlementId].status == Status.Confirmed) {
+            confirmedLock[settlementId] = true;
+        }
+
+        // Always maintain the owner's proposal (Confirmed or Failed)
+        Status finalStatus = settlements[settlementId].status;
+
+        settlements[settlementId].status = finalStatus;
+        emit SettlementValidated(settlementId, finalStatus);
+    }
+
+    function getSettlement(string calldata settlementId) external view returns (Settlement memory) {
+        return settlements[settlementId];
+    }
+    
     /// @notice Return all initialized settlement IDs
     function getSettlementIds() external view returns (string[] memory) {
         return settlementIds;

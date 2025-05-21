@@ -7,10 +7,13 @@ import json
 import datetime as dt
 from datetime import timedelta
 from dotenv import load_dotenv
+from urllib.parse import urljoin
+
+from docusign_esign import RecipientViewRequest, EnvelopesApi
 
 import time
 
-from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS
+from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS, get_docusign_client, SUPPORTED_ASSET_CATEGORIES, SUPPORTED_JURISDICTIONS
 
 load_dotenv()
 
@@ -62,8 +65,8 @@ def cli():
 
 @cli.command()
 @click.option('--settlement-type', required=True, type=click.Choice(SUPPORTED_APIS), help='Type of attestation')
-@click.option('--settlement-id', required=True, help='Settlement ID associated with the NFT sale')
-@click.option('--amount', required=False, type=float, help='Expected transfer amount, expected for Plaid type')
+@click.option('--settlement-id', required=True, help='Unique identifier for the settlement')
+@click.option('--amount', required=False, type=float, default=0.0, help='Expected transfer amount, expected for Plaid, PayPal type')
 @click.option('--network', required=True, type=click.Choice(SUPPORTED_NETWORKS), help="Target chain")
 @click.option('--owner', required=False, help='GitHub repo owner (github only)')
 @click.option('--repo', required=False, help='GitHub repo name (github only)')
@@ -71,10 +74,17 @@ def cli():
 @click.option('--path', required=False, help='Path to file to verify (github only)')
 @click.option('--branch', default='main', help='GitHub branch (optional, default is main)')
 @click.option('--metadata', required=False, type=str, help='Any metadata or uri to post onchain')
-@click.option('--recipient-email', default=None, help='Email to notify.')
+@click.option('--recipient-email', default=None, help='Recipient email (paypal).')
+@click.option('--pdf-path', default=None, help='Path to PDF to sign (docusign).')
+@click.option('--rwa-name', default="rwa-123", help='Name of the RWA')
+@click.option('--rwa-issuer', required=False, type=str, help='Issuer of the RWA token')
+@click.option('--rwa-value-usd', default=0.0, type=float, help='Value of the RWA in USD')
+@click.option('--rwa-category', type=click.Choice(SUPPORTED_ASSET_CATEGORIES), help='RWA type')
+@click.option('--rwa-jurisdiction', type=click.Choice(SUPPORTED_JURISDICTIONS), help='Jurisdiction of the RWA')
 @click.option('--notify-email', default=None, help='Email to notify.')
 @click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
-def init_attest(settlement_type, settlement_id, amount, network, owner, repo, tag, path, branch, metadata, recipient_email, notify_email, local):
+def init_attest(settlement_type, settlement_id, amount, network, owner, repo, tag, path, branch, metadata, recipient_email, pdf_path, 
+                rwa_name, rwa_issuer, rwa_value_usd, rwa_category, rwa_jurisdiction, notify_email, local):
     """
     Initializes the attestation process.
     """
@@ -140,7 +150,46 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
                 err = str(e)
             click.echo(f"Failed to register settlement: {err}")
             return
-    
+    elif settlement_type == 'docusign':
+        for field in ("rwa_name", "rwa_issuer", "rwa_category", "rwa_jurisdiction", "pdf_path"):
+                if not locals()[field]:
+                     raise click.UsageError({"error": f"{field} is required for DocuSign"})
+            
+        try:
+            form_data = {
+                "amount":             str(amount),
+                "settlement_id":      settlement_id,
+                "network":            network,
+                "settlement_type":    settlement_type,
+                "rwa_name":           rwa_name,
+                "rwa_issuer":         rwa_issuer,
+                "rwa_value_usd":      str(rwa_value_usd),
+                "rwa_category":       rwa_category,
+                "rwa_jurisdiction":   rwa_jurisdiction,
+                "metadata":           metadata or "",
+                "notify_email":       notify_email or ""
+            }
+
+            # 2) Open the PDF and send it as 'pdf' in files
+            with open(pdf_path, "rb") as pdf_file:
+                files = {"pdf": pdf_file}
+                url = urljoin(BACKEND_URL, "/api/register_settlement")
+
+                res = requests.post(url, data=form_data, files=files)
+                res.raise_for_status()
+
+            settlement_info = res.json()["settlement_info"]
+            click.echo(f"Settlement {settlement_id} registered on {network}.\nSettlement Info: {json.dumps(settlement_info,indent=2)}")
+            envelope_id = settlement_info.get("envelope_id")
+            click.echo(f"DocuSign envelope created: {envelope_id}")
+        except requests.RequestException as e:
+            try:
+                err = e.response.json().get("error") or e.response.text
+            except:
+                err = str(e)
+            click.echo(f"Failed to register settlement: {err}")
+            return
+            
     elif settlement_type == 'github':
         if not all([owner, repo, tag, path]):
             raise click.UsageError("GitHub attestation requires --owner, --repo, --tag, and --path")
@@ -225,6 +274,35 @@ def attest(settlement_id, metadata, local):
                 click.echo(f"Attestation request failed with status {e.response.status_code}")
         else:
             click.echo(f"Attestation request failed: {e}")
+
+@cli.command()
+@click.option('--envelope-id', required=True)
+@click.option('--recipient-id', required=True, type=click.Choice(['1', '2'], case_sensitive=False), help='Recipient ID (1 or 2)')
+@click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
+def simulate_signing(envelope_id, recipient_id, local):
+    global BACKEND_URL
+
+    if local:
+        BACKEND_URL = LOCAL_URL or "http://localhost:5045"
+
+    print(f'Using backend URL: {BACKEND_URL}')
+
+    res = requests.post(f"{BACKEND_URL}/api/simulate_signing", json={
+        "envelope_id": envelope_id,
+        "recipient_id": recipient_id
+    })
+
+    res.raise_for_status()
+
+    data = res.json()
+    view_url = data.get("view_url")
+    if not view_url:
+        click.echo("No view URL found in the response.")
+        return
+
+    click.echo(f"Please sign at:\n{view_url}")
+    if click.confirm("Open in browser now?", default=True):
+        webbrowser.open(view_url)
 
 if __name__ == "__main__":
     cli()

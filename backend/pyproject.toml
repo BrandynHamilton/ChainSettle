@@ -25,7 +25,8 @@ dependencies = [
     "paypal-server-sdk==1.0.0",
     "py-solc-x",
     "diskcache>=5.6.3",
-    "click"
+    "click",
+    "docusign-esign>=5.0.0",
 ]
 
 [tool.setuptools.packages.find]

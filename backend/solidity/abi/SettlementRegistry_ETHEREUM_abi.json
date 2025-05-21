@@ -14,7 +14,7 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "string",
         "name": "settlementId",
         "type": "string"
@@ -51,26 +51,7 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "string",
-        "name": "settlementId",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum SettlementRegistry.Status",
-        "name": "finalStatus",
-        "type": "uint8"
-      }
-    ],
-    "name": "SettlementFinalized",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
+        "indexed": true,
         "internalType": "string",
         "name": "settlementId",
         "type": "string"
@@ -98,6 +79,44 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "settlementId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum SettlementRegistry.Status",
+        "name": "finalStatus",
+        "type": "uint8"
+      }
+    ],
+    "name": "SettlementValidated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "agreeVotes",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "string",
@@ -111,7 +130,7 @@
       },
       {
         "internalType": "enum SettlementRegistry.Status",
-        "name": "status",
+        "name": "statusProposal",
         "type": "uint8"
       },
       {
@@ -138,7 +157,26 @@
         "type": "string"
       }
     ],
-    "name": "confirmVotes",
+    "name": "confirmedLock",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "disagreeVotes",
     "outputs": [
       {
         "internalType": "uint256",
@@ -163,6 +201,52 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "settlementId",
+        "type": "string"
+      }
+    ],
+    "name": "getSettlement",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "settlementId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "settlementType",
+            "type": "string"
+          },
+          {
+            "internalType": "enum SettlementRegistry.Status",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "string",
+            "name": "metadata",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct SettlementRegistry.Settlement",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -266,6 +350,30 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "lastVotedNonce",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "owner",
     "outputs": [
@@ -286,7 +394,7 @@
         "type": "string"
       }
     ],
-    "name": "rejectVotes",
+    "name": "proposalNonce",
     "outputs": [
       {
         "internalType": "uint256",
@@ -377,7 +485,7 @@
       },
       {
         "internalType": "bool",
-        "name": "confirm",
+        "name": "agree",
         "type": "bool"
       }
     ],

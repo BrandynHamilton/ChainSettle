@@ -13,7 +13,7 @@ sb-w7oqu40942591@personal.example.com
 
 ## github
 
-uv run python cli.py init-attest --settlement-type github --settlement-id 123 --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js 
+uv run python cli.py init-attest --settlement-type github --settlement-id a123bds --network ethereum --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js 
 
 ## plaid
 
@@ -21,10 +21,23 @@ uv run python cli.py init-attest --settlement-type plaid --settlement-id 456 --a
 
 ## paypal
 
-uv run python cli.py init-attest --settlement-type paypal --settlement-id 789 --amount 25000 --recipient-email treasuryops@defiprotocol.com --network base 
+uv run python cli.py init-attest --settlement-type paypal --settlement-id 789abc --amount 25000 --recipient-email treasuryops@defiprotocol.com --network base 
+
+## docusign
+
+uv run python cli.py init-attest --settlement-type docusign --settlement-id docusign12345678912 --network ethereum --pdf-path "ChainSettle RWA Tokenization Agreement.pdf" --rwa-name rwa-345 --rwa-category private_credit --rwa-issuer bluerock --rwa-value-usd 100000 --rwa-jurisdiction us --local
+
+# Signing Commands (for docusign type)
+
+uv run python cli.py simulate-signing --envelope-id a7fbbd65-d72f-413b-93d6-cd5af181310c --recipient-id 1 --local
+
+uv run python cli.py simulate-signing --envelope-id a7fbbd65-d72f-413b-93d6-cd5af181310c --recipient-id 2 --local
 
 # Attest Commands 
 
-uv run python cli.py attest --settlement-id 123 
+uv run python cli.py attest --settlement-id docusign12345678912 --local
+
+
+
 
 

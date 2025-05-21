@@ -2,8 +2,8 @@
   "ethereum": {
     "explorer_url": "https://sepolia.etherscan.io/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0xca21440B3A3840813B78ba69b59e76075b3d1F03",
-      "ValidatorRegistry": "0xe5bD26cF68A975f023c4bCeb634B1bCb066DE726"
+      "SettlementRegistry": "0x5593da80774b1E8985233E1eb4F8Aa1E8D759BF9",
+      "ValidatorRegistry": "0xf944905c98Ff59ccBFacd5B33B1f22f4EDF75B40"
     },
     "abis": {
       "SettlementRegistry": [
@@ -22,7 +22,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -59,26 +59,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "indexed": false,
-              "internalType": "enum SettlementRegistry.Status",
-              "name": "finalStatus",
-              "type": "uint8"
-            }
-          ],
-          "name": "SettlementFinalized",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -106,6 +87,44 @@
           "type": "event"
         },
         {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "finalStatus",
+              "type": "uint8"
+            }
+          ],
+          "name": "SettlementValidated",
+          "type": "event"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "agreeVotes",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [
             {
               "internalType": "string",
@@ -119,7 +138,7 @@
             },
             {
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -146,7 +165,26 @@
               "type": "string"
             }
           ],
-          "name": "confirmVotes",
+          "name": "confirmedLock",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "disagreeVotes",
           "outputs": [
             {
               "internalType": "uint256",
@@ -171,6 +209,52 @@
               "internalType": "bool",
               "name": "",
               "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlement",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "string",
+                  "name": "settlementId",
+                  "type": "string"
+                },
+                {
+                  "internalType": "string",
+                  "name": "settlementType",
+                  "type": "string"
+                },
+                {
+                  "internalType": "enum SettlementRegistry.Status",
+                  "name": "status",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "string",
+                  "name": "metadata",
+                  "type": "string"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "amount",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct SettlementRegistry.Settlement",
+              "name": "",
+              "type": "tuple"
             }
           ],
           "stateMutability": "view",
@@ -274,6 +358,30 @@
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "name": "lastVotedNonce",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "owner",
           "outputs": [
@@ -294,7 +402,7 @@
               "type": "string"
             }
           ],
-          "name": "rejectVotes",
+          "name": "proposalNonce",
           "outputs": [
             {
               "internalType": "uint256",
@@ -385,7 +493,7 @@
             },
             {
               "internalType": "bool",
-              "name": "confirm",
+              "name": "agree",
               "type": "bool"
             }
           ],
@@ -529,8 +637,8 @@
   "blockdag": {
     "explorer_url": "https://primordial.bdagscan.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x3bfdB5af505E2b1ef8A7944B8D3BeB1B695520A2",
-      "ValidatorRegistry": "0x19f7EBdc6558896698E55F9ed7451985548fAD1E"
+      "SettlementRegistry": "0x30a773af170a89d55f1944ef4729C1604D00C77A",
+      "ValidatorRegistry": "0x8b7092d69a9b00363070E508673656E0f9e46bcD"
     },
     "abis": {
       "SettlementRegistry": [
@@ -549,7 +657,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -586,26 +694,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "indexed": false,
-              "internalType": "enum SettlementRegistry.Status",
-              "name": "finalStatus",
-              "type": "uint8"
-            }
-          ],
-          "name": "SettlementFinalized",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -633,6 +722,44 @@
           "type": "event"
         },
         {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "finalStatus",
+              "type": "uint8"
+            }
+          ],
+          "name": "SettlementValidated",
+          "type": "event"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "agreeVotes",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [
             {
               "internalType": "string",
@@ -646,7 +773,7 @@
             },
             {
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -673,7 +800,26 @@
               "type": "string"
             }
           ],
-          "name": "confirmVotes",
+          "name": "confirmedLock",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "disagreeVotes",
           "outputs": [
             {
               "internalType": "uint256",
@@ -698,6 +844,52 @@
               "internalType": "bool",
               "name": "",
               "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlement",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "string",
+                  "name": "settlementId",
+                  "type": "string"
+                },
+                {
+                  "internalType": "string",
+                  "name": "settlementType",
+                  "type": "string"
+                },
+                {
+                  "internalType": "enum SettlementRegistry.Status",
+                  "name": "status",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "string",
+                  "name": "metadata",
+                  "type": "string"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "amount",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct SettlementRegistry.Settlement",
+              "name": "",
+              "type": "tuple"
             }
           ],
           "stateMutability": "view",
@@ -801,6 +993,30 @@
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "name": "lastVotedNonce",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "owner",
           "outputs": [
@@ -821,7 +1037,7 @@
               "type": "string"
             }
           ],
-          "name": "rejectVotes",
+          "name": "proposalNonce",
           "outputs": [
             {
               "internalType": "uint256",
@@ -912,7 +1128,7 @@
             },
             {
               "internalType": "bool",
-              "name": "confirm",
+              "name": "agree",
               "type": "bool"
             }
           ],
@@ -1056,8 +1272,8 @@
   "base": {
     "explorer_url": "https://base-sepolia.blockscout.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x14bE739B31aC9808F70FDB60fC56dd337b6CCcbf",
-      "ValidatorRegistry": "0xa345118C312Af74312130DD35da7AE2f1E507108"
+      "SettlementRegistry": "0x196c906B65c99769b47e7E3aff03A0A5c046bF9a",
+      "ValidatorRegistry": "0x17F2e15de3fC241a9840B33D3e85EdA8f15E7445"
     },
     "abis": {
       "SettlementRegistry": [
@@ -1076,7 +1292,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -1113,26 +1329,7 @@
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "indexed": false,
-              "internalType": "enum SettlementRegistry.Status",
-              "name": "finalStatus",
-              "type": "uint8"
-            }
-          ],
-          "name": "SettlementFinalized",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": false,
+              "indexed": true,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -1160,6 +1357,44 @@
           "type": "event"
         },
         {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "finalStatus",
+              "type": "uint8"
+            }
+          ],
+          "name": "SettlementValidated",
+          "type": "event"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "agreeVotes",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [
             {
               "internalType": "string",
@@ -1173,7 +1408,7 @@
             },
             {
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -1200,7 +1435,26 @@
               "type": "string"
             }
           ],
-          "name": "confirmVotes",
+          "name": "confirmedLock",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            }
+          ],
+          "name": "disagreeVotes",
           "outputs": [
             {
               "internalType": "uint256",
@@ -1225,6 +1479,52 @@
               "internalType": "bool",
               "name": "",
               "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlement",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "string",
+                  "name": "settlementId",
+                  "type": "string"
+                },
+                {
+                  "internalType": "string",
+                  "name": "settlementType",
+                  "type": "string"
+                },
+                {
+                  "internalType": "enum SettlementRegistry.Status",
+                  "name": "status",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "string",
+                  "name": "metadata",
+                  "type": "string"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "amount",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct SettlementRegistry.Settlement",
+              "name": "",
+              "type": "tuple"
             }
           ],
           "stateMutability": "view",
@@ -1328,6 +1628,30 @@
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "name": "lastVotedNonce",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "owner",
           "outputs": [
@@ -1348,7 +1672,7 @@
               "type": "string"
             }
           ],
-          "name": "rejectVotes",
+          "name": "proposalNonce",
           "outputs": [
             {
               "internalType": "uint256",
@@ -1439,7 +1763,7 @@
             },
             {
               "internalType": "bool",
-              "name": "confirm",
+              "name": "agree",
               "type": "bool"
             }
           ],

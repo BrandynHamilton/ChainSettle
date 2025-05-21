@@ -13,7 +13,6 @@ from web3.exceptions import TimeExhausted
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests import exceptions as req_ex
-from urllib3.exceptions import ProtocolError, SSLError
 
 from chainsettle.wallet import generate_wallet 
 from chainsettle.metadata import SUPPORTED_NETWORKS
@@ -119,6 +118,8 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
 
     settlement_registry_obj = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
+    print(f'status_enum:{status_enum}')
+
     # === Parameters for attest function ===
     amount_scaled = int(amount * 1e6)
 
@@ -167,7 +168,9 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
     time.sleep(1)
     # === Build the base tx for validation ===
 
-    validation_tx = settlement_registry_obj.functions.voteOnSettlement(settlement_id,True).build_transaction({
+    agree = True # We assume the validator agrees with the attestation, placeholder for now
+
+    validation_tx = settlement_registry_obj.functions.voteOnSettlement(settlement_id,agree).build_transaction({
         "from": account.address,
         "nonce": nonce + 1,
     })
@@ -517,6 +520,8 @@ def handle_attestation(w3, contract, account, event, processed_settlements, max_
 
     print(f"[{w3.provider.endpoint_uri}] Detected Attested: {settlement_id}")
 
+    agree = True # Placeholder for now, we assume the validator agrees with the attestation
+
     for attempt in range(1, max_retries + 1):
         try:
             nonce = w3.eth.get_transaction_count(account.address, 'pending')
@@ -524,7 +529,7 @@ def handle_attestation(w3, contract, account, event, processed_settlements, max_
             priority_fee = w3.to_wei("2", "gwei")
             max_fee = base_fee + 2 * priority_fee
 
-            tx = contract.functions.voteOnSettlement(settlement_id, True).build_transaction({
+            tx = contract.functions.voteOnSettlement(settlement_id, agree).build_transaction({
                 "from": account.address,
                 "nonce": nonce,
             })
@@ -643,7 +648,7 @@ def start_listener(network, private_key, config, ALCHEMY_API_KEY):
                     if "filter not found" in str(e).lower():
                         raise RuntimeError("FilterExpired")
                     raise
-                except (RequestsConnectionError, ProtocolError, req_ex.SSLError, TimeExhausted) as e:
+                except (RequestsConnectionError, req_ex.SSLError, TimeExhausted) as e:
                     wait = 2 ** attempt + random.random()
                     print(f"[{network.upper()}] 🌐 RPC issue: {e} - retrying in {wait:.1f}s")
                     time.sleep(wait)

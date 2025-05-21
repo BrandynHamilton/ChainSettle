@@ -12,3 +12,5 @@ backend/arweave/arweave_keyfile.json
 backend/solidity/keystores
 backend/keystores
 *.venv
+backend/private.key
+*.key

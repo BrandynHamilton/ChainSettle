@@ -11,4 +11,9 @@ BLOCK_EXPLORER_MAP = {
 }
 
 SUPPORTED_NETWORKS = ['ethereum','blockdag','base']
-SUPPORTED_APIS = ['plaid', 'github', 'paypal']
+
+SUPPORTED_APIS = ['plaid', 'github', 'paypal', 'docusign']
+
+SUPPORTED_JURISDICTIONS = ['us', 'uk', 'eu', 'pa', 'mx', 'ng', 'other']
+
+SUPPORTED_ASSET_CATEGORIES = ['real_estate', 'private_credit', 'commodity', 'other']

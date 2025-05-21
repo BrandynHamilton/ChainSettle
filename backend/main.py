@@ -19,12 +19,16 @@ from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchan
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 
+from docusign_esign import RecipientViewRequest, EnvelopesApi
+
 from chainsettle import (create_link_token,create_plaid_client, github_tag_exists, github_file_exists,get_validator_list,
                          simulate_plaid_tx_and_get_access_token,parse_date,network_func,attest_onchain,prepare_email_response,
                          wait_for_transaction_settlement,init_attest_onchain,SUPPORTED_NETWORKS,STATUS_MAP,SUPPORTED_APIS,
                          format_size,post_to_arweave,get_tx_status,wait_for_finalization_event,send_email_notification,
-                         PayPalModule,add_validator, find_settlement_id_by_order)
-
+                         PayPalModule,add_validator, find_settlement_id_by_order, create_envelope, get_docusign_client,
+                         SUPPORTED_ASSET_CATEGORIES, SUPPORTED_JURISDICTIONS, get_settlement_info,attest_util,update_settlement_info,
+                         validate_settlement_id_before_registration,init_attest_util,validate_settlement_id_before_attestation)
+                         
 load_dotenv()
 
 SOLIDITY_ENV_PATH = os.path.join(os.getcwd(), 'solidity', '.env')
@@ -57,147 +61,6 @@ for network, cfg in config.items():
         print(f"  {reg_name}: {address}")
 
 assert ALCHEMY_API_KEY and PRIVATE_KEY, "Missing Gateway API Key and Wallet Private Key"
-
-# Helper functions for onchain settlement registration and attestation
-def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, metadata):
-    print(f'tx: {tx}')
-    settlement_type = tx.get('settlement_type', 'unknown')
-    print(f'Settlement Type: {settlement_type}')
-
-    try:
-        receipts = attest_onchain(
-            w3=w3,
-            account=account,
-            REGISTRY_ADDRESS=REGISTRY_ADDRESS,
-            REGISTRY_ABI=REGISTRY_ABI,
-            amount=amount,
-            settlement_type=settlement_type,
-            settlement_id=settlement_id,
-            status_enum=status_enum,
-            details=metadata
-        )
-
-        attest_tx_hash = '0x' + receipts['attestation_receipt'].transactionHash.hex()
-        validate_tx_hash = '0x' + receipts['validation_receipt'].transactionHash.hex()
-
-        print("Waiting for attestation receipt...")
-        attest_receipt = w3.eth.wait_for_transaction_receipt(attest_tx_hash, timeout=60)
-        print("Waiting for validation receipt...")
-        validate_receipt = w3.eth.wait_for_transaction_receipt(validate_tx_hash, timeout=60)
-
-        if attest_receipt.status != 1:
-            raise Exception(f"Attestation tx failed. Status: {attest_receipt.status}")
-        if validate_receipt.status != 1:
-            raise Exception(f"Validation tx failed. Status: {validate_receipt.status}")
-
-        tx['attest_tx_hash'] = attest_tx_hash
-        tx['attest_tx_url'] = f"{url}{attest_tx_hash}"
-        tx['validate_tx_hash'] = validate_tx_hash
-        tx['validate_tx_url'] = f"{url}{validate_tx_hash}"
-
-        return tx
-
-    except Exception as e:
-        print(f"Error during attestation: {e}")
-        tx['attest_tx_hash'] = None
-        tx['attest_tx_url'] = None
-        tx['validate_tx_hash'] = None
-        tx['validate_tx_url'] = None
-        tx['error'] = str(e)
-
-    return tx
-
-def init_attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, metadata, wait_seconds=3, max_retries=5):
-    print(f'tx: {tx}')
-    settlement_type = tx.get('settlement_type', 'unknown')
-    print(f'Settlement Type: {settlement_type}')
-
-    try:
-        receipt = init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, details=metadata)
-        tx_hash = '0x' + receipt.transactionHash.hex()
-        tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-
-
-        time.sleep(wait_seconds)
-
-        for attempt in range(max_retries):
-            try:
-                tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-                if tx_receipt.status != 1:
-                    raise Exception(f"Transaction failed onchain. Status: {tx_receipt.status}")
-
-                tx['tx_hash'] = tx_hash
-                tx['tx_url'] = f"{url}{tx_hash}"
-
-                return tx
-            except Exception as e:
-                    print(f"Attempt {attempt+1} failed to get receipt: {e}")
-                    if attempt < max_retries - 1:
-                        time.sleep(2)  # Wait a little before retrying
-                    else:
-                        raise  # After final attempt, raise error
-    except Exception as e:
-        print(f"Error during attestation: {e}")
-        tx['tx_hash'] = None
-        tx['tx_url'] = None
-        tx['error'] = str(e)    
-
-def update_settlement_info(settlement_id: str, settlement_info: dict):
-    """
-    Stores the full settlement_info in cache under settlement_id,
-    and appends tx_id to the arweave_tx_map[settlement_id] list.
-    """
-    # Store latest settlement info under its ID
-    cache[settlement_id] = settlement_info
-
-    print(f"[cache] Saved settlement_info and updated tx history for {settlement_id}")
-
-def get_settlement_info(settlement_id: str):
-    """Store retrieves latest settlement info by ID"""
-
-    settlement_info = cache.get(settlement_id, None)
-
-    return settlement_info
-
-def is_settlement_initialized_onchain(settlement_id: str, contract) -> bool:
-    """
-    Returns True if the settlement_id is already initialized onchain.
-    """
-    onchain_data = contract.functions.settlements(settlement_id).call()
-    return onchain_data[0] != ''  # settlementId field
-
-def is_settlement_confirmed_onchain(settlement_id: str, contract) -> bool:
-    """
-    Returns True if the settlement_id has status 1 (Confirmed).
-    """
-    onchain_data = contract.functions.settlements(settlement_id).call()
-    return onchain_data[2] == 1  # Status enum: 0=Unverified, 1=Confirmed, 2=Failed
-
-def is_settlement_registered_locally(settlement_id: str) -> bool:
-    """
-    Returns True if the settlement_id is already in diskcache.
-    """
-    return cache.get(settlement_id) is not None
-
-def validate_settlement_id_before_registration(settlement_id: str, contract) -> tuple[bool, str]:
-    """
-    Combines local and onchain checks before allowing a new registration.
-    """
-    if is_settlement_registered_locally(settlement_id):
-        return False, f"Settlement ID '{settlement_id}' already registered in local cache."
-    if is_settlement_initialized_onchain(settlement_id, contract):
-        return False, f"Settlement ID '{settlement_id}' already exists onchain."
-    return True, "OK"
-
-def validate_settlement_id_before_attestation(settlement_id: str, contract) -> tuple[bool, str]:
-    """
-    Checks if the settlement exists and is not already confirmed.
-    """
-    if not is_settlement_initialized_onchain(settlement_id, contract):
-        return False, f"Settlement ID '{settlement_id}' not initialized onchain."
-    if is_settlement_confirmed_onchain(settlement_id, contract):
-        return False, f"Settlement ID '{settlement_id}' is already confirmed onchain."
-    return True, "OK"
 
 def require_api_key(f):
     @wraps(f)
@@ -338,7 +201,7 @@ def create_app():
         if not settlement_id:
             return "Could not locate associated settlement ID", 400
         
-        settlement_info = get_settlement_info(settlement_id)
+        settlement_info = get_settlement_info(cache, settlement_id)
 
         print(f'settlement_info: {settlement_info}')
 
@@ -383,9 +246,9 @@ def create_app():
                 settlement_info['finalStatus'] = status
                 settlement_info['capture_id'] = capture_id
 
-                update_settlement_info(settlement_id, settlement_info)
+                update_settlement_info(cache, settlement_id, settlement_info)
 
-                if notify_email not in [None, 'None']:
+                if notify_email not in [None, 'None', '', ""]:
                     subject, body = prepare_email_response(settlement_info)
                     send_email_notification(subject, body, notify_email)
 
@@ -403,7 +266,9 @@ def create_app():
     def settlement_types():
         return jsonify({
             "supported_types": SUPPORTED_APIS,
-            "supported_networks": SUPPORTED_NETWORKS
+            "supported_networks": SUPPORTED_NETWORKS,
+            "supported_asset_categories": SUPPORTED_ASSET_CATEGORIES,
+            "supported_jurisdictions": SUPPORTED_JURISDICTIONS
         })
     
     @app.route("/api/validator_list", methods=["GET"])
@@ -420,24 +285,108 @@ def create_app():
         
         return jsonify({"Attest Node":owner, "Number of Validators":validator_count, "Validator Registry": validator_registry})
     
+    @app.route("/api/simulate_signing", methods=["POST"])
+    def simulate_signing():
+        envelope_id = request.get_json().get("envelope_id")
+        recipient_id = request.get_json().get("recipient_id")
+        if not envelope_id or not recipient_id:
+            return jsonify({"error": "Missing envelope_id or recipient_id"}), 400
+        
+        if recipient_id not in ["1", "2"]:
+            return jsonify({"error": "Invalid recipient_id. Use 1 or 2."}), 400
+        
+        account_id, api_client = get_docusign_client(private_key_path='private.key')
+        envelopes_api = EnvelopesApi(api_client)
+
+        signer_profiles = {
+            "1": {
+                "client_user_id": "1",
+                "recipient_id": "1",
+                "user_name": "Signer One",
+                "email": "signer1@example.com"
+            },
+            "2": {
+                "client_user_id": "2",
+                "recipient_id": "2",
+                "user_name": "Signer Two",
+                "email": "signer2@example.com"
+            }
+        }
+
+        if recipient_id not in signer_profiles:
+            return jsonify({"error": "Invalid recipient_id. Use 1 or 2."}), 400
+
+        profile = signer_profiles[recipient_id]
+
+        recipient_view_request = RecipientViewRequest(
+            authentication_method='none',
+            client_user_id=profile["client_user_id"],
+            recipient_id=profile["recipient_id"],
+            return_url="https://example.com/return",
+            user_name=profile["user_name"],
+            email=profile["email"]
+        )
+
+        view_url = envelopes_api.create_recipient_view(
+            account_id=account_id,
+            envelope_id=envelope_id,
+            recipient_view_request=recipient_view_request
+        )
+
+        return jsonify({'view_url': view_url.url}), 200
+    
     @app.route("/api/register_settlement", methods=["POST"])
     def register_settlement():
         """
         This endpoint is called by the client to register a new settlement. 
         """
 
-        data = request.get_json()
-        settlement_id = data.get("settlement_id")
-        network = data.get("network")
-        settlement_type = data.get("settlement_type")
-        notify_email = data.get('notify_email', None)
-        owner = data.get('owner')
-        repo = data.get('repo')
-        tag = data.get('tag')
-        path = data.get('path')
-        branch = data.get('branch', 'main')
-        public_token = data.get("public_token", None)
-        recipient_email = data.get('recipient_email')
+        if request.is_json:
+
+            data = request.get_json()
+            settlement_id = data.get("settlement_id")
+            network = data.get("network")
+            settlement_type = data.get("settlement_type")
+            notify_email = data.get('notify_email', None)
+
+            # Github target data
+            owner = data.get('owner')
+            repo = data.get('repo')
+            tag = data.get('tag')
+            path = data.get('path')
+            branch = data.get('branch', 'main')
+
+            # Plaid access token
+            public_token = data.get("public_token", None)
+
+            # PayPal recipient 
+            recipient_email = data.get('recipient_email')
+
+            try: 
+                amount = float(data.get('amount', 0))
+            except (TypeError, ValueError):
+                amount = 0.0
+            
+            try:
+                metadata = str(data.get('metadata', ""))
+            except:
+                metadata = ""
+
+        else:
+
+            #We expect a form for docusign type
+            settlement_id = request.form.get("settlement_id")
+            amount = float(request.form.get("amount", 0))
+            metadata = request.form.get("metadata", "")
+            network = request.form.get("network")
+            settlement_type = request.form.get("settlement_type")
+            notify_email = request.form.get('notify_email', None)
+            rwa_name = request.form.get('rwa_name')
+            rwa_issuer = request.form.get('rwa_issuer')
+            rwa_value_usd = float(request.form.get("rwa_value_usd", 0))
+            rwa_category = request.form.get('rwa_category')
+            rwa_jurisdiction = request.form.get('rwa_jurisdiction')
+            pdf_file = request.files.get("pdf")
 
         if settlement_type not in SUPPORTED_APIS:
             return jsonify({"error": f"Unsupported settlement type: {settlement_type}. Supported types are {SUPPORTED_APIS}"}), 400
@@ -452,28 +401,15 @@ def create_app():
         url = config[network]['explorer_url']
         REGISTRY_ABI = config[network]['abis']['SettlementRegistry']
 
-        print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS},   URL: {url}')
+        print(f'NETWORK: {network}, REGISTRY_ADDRESS: {REGISTRY_ADDRESS}, URL: {url}')
 
         w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
 
         contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
-        ok, msg = validate_settlement_id_before_registration(settlement_id, contract)
+        ok, msg = validate_settlement_id_before_registration(cache, settlement_id, contract)
         if not ok:
             return jsonify({"error": msg}), 400
-        
-        try: 
-            amount = float(data.get('amount', 0))
-        except (TypeError, ValueError):
-            amount = 0.0
-        
-        try:
-            metadata = str(data.get('metadata', ""))
-        except:
-            metadata = ""
-
-        print(f"Account: {account.address}")
-        print(f'recipient_email: {recipient_email}')
 
         settlement_info = {
             "settlement_id": settlement_id,
@@ -496,6 +432,43 @@ def create_app():
                 "tag": tag,
                 "path": path,
                 "branch": branch
+            })
+        elif settlement_type == 'docusign':
+            print(f'Registering DocuSign settlement with ID: {settlement_id}')
+
+            for field in ("rwa_name", "rwa_issuer", "rwa_category", "rwa_jurisdiction"):
+                if not locals()[field]:
+                    return jsonify({"error": f"{field} is required for DocuSign"}), 400
+
+            if rwa_category not in SUPPORTED_ASSET_CATEGORIES:
+                return jsonify({"error": f"Unsupported RWA category: {rwa_category}. Supported categories are {SUPPORTED_ASSET_CATEGORIES}"}), 400
+            
+            if rwa_jurisdiction not in SUPPORTED_JURISDICTIONS:
+                return jsonify({"error": f"Unsupported RWA jurisdiction: {rwa_jurisdiction}. Supported jurisdictions are {SUPPORTED_JURISDICTIONS}"}), 400
+            
+            if not pdf_file:
+                return jsonify({"error": "Must upload a PDF as `pdf`"}), 400
+            pdf_bytes = pdf_file.read()
+
+            account_id, api_client = get_docusign_client(private_key_path='private.key')
+            envelope_id = create_envelope(
+                api_client=api_client,
+                account_id=account_id,
+                rwa_name=rwa_name,
+                rwa_issuer=rwa_issuer,
+                rwa_value_usd=rwa_value_usd,
+                rwa_category=rwa_category,
+                rwa_jurisdiction=rwa_jurisdiction,
+                pdf_bytes=pdf_bytes
+            ) # Creates envelope with test signer accounts
+            print(f"Envelope created: {envelope_id}")
+            settlement_info.update({
+                "envelope_id": envelope_id,
+                "rwa_name": rwa_name,
+                "rwa_issuer": rwa_issuer,
+                "rwa_value_usd": rwa_value_usd,
+                "rwa_category": rwa_category,
+                "rwa_jurisdiction": rwa_jurisdiction
             })
         elif settlement_type == 'plaid':
             print(f'Registering Plaid settlement with ID: {settlement_id}')
@@ -526,7 +499,7 @@ def create_app():
 
         settlement_info = init_attest_util(settlement_info, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, metadata)
 
-        update_settlement_info(settlement_id, settlement_info)
+        update_settlement_info(cache, settlement_id, settlement_info)
         
         return jsonify({"status": "registered", "settlement_info": settlement_info})
 
@@ -539,7 +512,7 @@ def create_app():
 
         settlement_id = data.get("settlement_id")
 
-        settlement_info = get_settlement_info(settlement_id)
+        settlement_info = get_settlement_info(cache, settlement_id)
 
         if settlement_info is None:
             return jsonify({"error": f"No settlement info for settlement_id {settlement_id}"}), 400
@@ -553,9 +526,17 @@ def create_app():
         path = settlement_info.get('path')
         branch = settlement_info.get('branch', 'main')
 
+        rwa_name = settlement_info.get('rwa_name')
+        rwa_issuer = settlement_info.get('rwa_issuer')
+        rwa_value_usd = settlement_info.get("rwa_value_usd")
+        rwa_category = settlement_info.get('rwa_category')
+        rwa_jurisdiction = settlement_info.get('rwa_jurisdiction')
+        envelope_id = settlement_info.get('envelope_id')
+
         network = settlement_info['network']
         settlement_type = settlement_info['settlement_type']
         amount = settlement_info.get('amount', 0.0)
+        metadata = settlement_info.get('metadata', "")
         notify_email = settlement_info.get('notify_email', None)
 
         REGISTRY_ADDRESS = config[network]['registry_addresses']['SettlementRegistry']
@@ -575,14 +556,13 @@ def create_app():
         if network not in SUPPORTED_NETWORKS:
             return jsonify({"error": f"network unsupported, must choose either ethereum or blockdag"}), 400
 
-        latest_block = w3.eth.get_block("latest")
-        blocknumber = latest_block['number']
-
         base_response = {
             "settlement_id": settlement_id,
             "network": network,
             "settlement_type": settlement_type,
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "metadata": metadata,
+            "amount": amount,
         }
 
         if settlement_type == 'github':
@@ -593,7 +573,7 @@ def create_app():
             file_ok, size_bytes = github_file_exists(owner, repo, path, branch)
 
             try:
-                existing_metadata = str(data.get('metadata', ""))
+                existing_metadata = str(settlement_info.get('metadata', ""))
             except:
                 existing_metadata = ""
 
@@ -601,8 +581,6 @@ def create_app():
                 combined_metadata = f"{existing_metadata} | size: {size_bytes} bytes"
             else:
                 combined_metadata = f"size: {size_bytes} bytes"
-
-            print(f'Final metadata: {combined_metadata}')
 
             response_payload.update({
                 "repo": f"{owner}/{repo}",
@@ -627,15 +605,81 @@ def create_app():
 
             response_payload = attest_util(response_payload, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, combined_metadata)
 
-            contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
+            status = wait_for_finalization_event(w3, contract, settlement_id)
+            response_payload['finalStatus'] = status
+            print(f'Final Status: {status}')
+
+            update_settlement_info(cache, settlement_id, response_payload)
+
+            if notify_email not in [None, 'None', '', ""]:
+                subject, body = prepare_email_response(response_payload)
+                print(f'Sending email notification to {notify_email}')
+                send_email_notification(subject, body, notify_email)
+
+            return jsonify(response_payload)
+        
+        elif settlement_type == 'docusign':
+            response_payload = base_response.copy()
+            response_payload.update({
+                
+                "rwa_name": rwa_name,
+                "rwa_issuer": rwa_issuer,
+                "rwa_value_usd": rwa_value_usd,
+                "rwa_category": rwa_category,
+                "rwa_jurisdiction": rwa_jurisdiction,
+                "envelope_id": envelope_id,
+
+            })
+
+            print(f'Initiating DocuSign attestation for envelope ID: {envelope_id}')
+
+            account_id, api_client = get_docusign_client(private_key_path='private.key')
+            envelopes_api = EnvelopesApi(api_client)
+            envelope_status = envelopes_api.get_envelope(account_id, envelope_id)
+
+            status = envelope_status.status
+
+            if status != "completed":
+                print(f"DocuSign Envelope Status: {status}")
+                response_payload["status"] = "failed"
+            elif status == "completed":
+                print(f"DocuSign Envelope Status: {status}")
+                response_payload["status"] = "confirmed"
+
+            status_enum = STATUS_MAP.get(response_payload["status"])
+
+            print(f'status_enum: {status_enum}')
+
+            rwa_metadata = {
+                "rwa_name":        rwa_name,
+                "rwa_issuer":      rwa_issuer,
+                "rwa_value_usd":   int(rwa_value_usd),
+                "rwa_category":    rwa_category,
+                "rwa_jurisdiction":rwa_jurisdiction,
+                "envelope_id":     envelope_id,
+            }
+
+            try:
+                existing_metadata = str(settlement_info.get('metadata', ""))
+            except:
+                existing_metadata = ""
+
+            if existing_metadata.strip() != "":
+                rwa_metadata.update({"metadata": existing_metadata})
+
+            combined_metadata = json.dumps(rwa_metadata)
+
+            print(f'combined_metadata: {combined_metadata}')
+
+            response_payload = attest_util(response_payload, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, combined_metadata)
 
             status = wait_for_finalization_event(w3, contract, settlement_id)
             response_payload['finalStatus'] = status
             print(f'Final Status: {status}')
 
-            update_settlement_info(settlement_id, response_payload)
+            update_settlement_info(cache, settlement_id, response_payload)
 
-            if notify_email not in [None, 'None']:
+            if notify_email not in [None, 'None', '', ""]:
                 subject, body = prepare_email_response(response_payload)
                 print(f'Sending email notification to {notify_email}')
                 send_email_notification(subject, body, notify_email)
@@ -647,13 +691,11 @@ def create_app():
             response_payload.update({
                 
                 "recipient_email": recipient_email,
-                "amount": amount,
-                "timestamp": dt.datetime.utcnow().isoformat()
             })
             print(f'settlement_info:{settlement_info}')
 
             try:
-                existing_metadata = str(data.get('metadata', ""))
+                existing_metadata = str(settlement_info.get('metadata', ""))
             except:
                 existing_metadata = ""
 
@@ -680,7 +722,7 @@ def create_app():
                 "metadata": combined_metadata
             })
 
-            update_settlement_info(settlement_id, response_payload)
+            update_settlement_info(cache, settlement_id, response_payload)
 
             return jsonify(
                 response_payload
@@ -760,9 +802,12 @@ def create_app():
             status = wait_for_finalization_event(w3, contract, settlement_id)
             response_payload['finalStatus'] = status
 
-            update_settlement_info(settlement_id, response_payload)
+            update_settlement_info(cache, settlement_id, response_payload)
 
-            if notify_email not in [None, 'None']:
+            print('notify email type:')
+            print(type(notify_email))
+
+            if notify_email not in [None, 'None', '', ""]:
                 subject, body = prepare_email_response(response_payload)
                 print(f'Sending email notification to {notify_email}')
                 send_email_notification(subject, body, notify_email)

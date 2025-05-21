@@ -1158,6 +1158,7 @@ dependencies = [
     { name = "arweave-python-client" },
     { name = "click" },
     { name = "diskcache" },
+    { name = "docusign-esign" },
     { name = "flask", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, extra = ["async"], marker = "python_full_version < '3.8'" },
     { name = "flask", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, extra = ["async"], marker = "python_full_version == '3.8.*'" },
     { name = "flask", version = "3.1.0", source = { registry = "https://pypi.org/simple" }, extra = ["async"], marker = "python_full_version >= '3.9'" },
@@ -1186,6 +1187,7 @@ requires-dist = [
     { name = "arweave-python-client" },
     { name = "click" },
     { name = "diskcache", specifier = ">=5.6.3" },
+    { name = "docusign-esign", specifier = ">=5.0.0" },
     { name = "flask", extras = ["async"] },
     { name = "numpy" },
     { name = "pandas" },
@@ -1807,6 +1809,30 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/3f/21/1c1ffc1a039ddcc459db43cc108658f32c57d271d7289a2794e401d0fdb6/diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc", size = 67916, upload-time = "2023-08-31T06:12:00.316Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19", size = 45550, upload-time = "2023-08-31T06:11:58.822Z" },
+]
+
+[[package]]
+name = "docusign-esign"
+version = "5.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "cryptography" },
+    { name = "pyjwt", version = "2.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "pyjwt", version = "2.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
+    { name = "pyjwt", version = "2.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "python-dateutil" },
+    { name = "setuptools", version = "68.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "setuptools", version = "75.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
+    { name = "setuptools", version = "80.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "six" },
+    { name = "urllib3", version = "2.0.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
+    { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
+    { name = "urllib3", version = "2.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/62/ba11dd2fa736007baafd95da324390948ab60a642fb5be0fe86ba953c418/docusign-esign-5.0.0.tar.gz", hash = "sha256:c9d8aac42e82c63750256430404df0c0ca715427546fbac9674cd7d5e5d7c9a2", size = 1288531, upload-time = "2025-05-08T02:36:26.669Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/65/5c/b6877c006487f448649bd64300a0a70b442adb2240f17097bc00e9d8d522/docusign_esign-5.0.0-py2.py3-none-any.whl", hash = "sha256:e9cd61d3befd86c3530b421f12735f4de1dbdacc64b2d4ba4846cc38fbe20d11", size = 1963814, upload-time = "2025-05-08T02:36:25.124Z" },
 ]
 
 [[package]]
@@ -4817,6 +4843,55 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1a/1a/abbd63d47e1d9b0d632fee6bb15785d0889c8a6e0a6c3b5a8e28ac1ec5d2/pydantic_core-2.33.2-pp39-pypy39_pp73-musllinux_1_1_armv7l.whl", hash = "sha256:3abcd9392a36025e3bd55f9bd38d908bd17962cc49bc6da8e7e96285336e2bca", size = 2237859, upload-time = "2025-04-23T18:33:45.56Z" },
     { url = "https://files.pythonhosted.org/packages/80/1c/fa883643429908b1c90598fd2642af8839efd1d835b65af1f75fba4d94fe/pydantic_core-2.33.2-pp39-pypy39_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:3a1c81334778f9e3af2f8aeb7a960736e5cab1dfebfb26aabca09afd2906c039", size = 2239059, upload-time = "2025-04-23T18:33:47.735Z" },
     { url = "https://files.pythonhosted.org/packages/d4/29/3cade8a924a61f60ccfa10842f75eb12787e1440e2b8660ceffeb26685e7/pydantic_core-2.33.2-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:2807668ba86cb38c6817ad9bc66215ab8584d1d304030ce4f0887336f28a5e27", size = 2066661, upload-time = "2025-04-23T18:33:49.995Z" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.7.2' and python_full_version < '3.8' and platform_machine != 'aarch64' and platform_machine != 'arm64'",
+    "python_full_version >= '3.7.1' and python_full_version < '3.7.2' and platform_machine != 'aarch64' and platform_machine != 'arm64'",
+    "python_full_version >= '3.7.2' and python_full_version < '3.8' and platform_machine == 'aarch64'",
+    "python_full_version >= '3.7.1' and python_full_version < '3.7.2' and platform_machine == 'aarch64'",
+    "python_full_version >= '3.7.2' and python_full_version < '3.8' and platform_machine == 'arm64'",
+    "python_full_version >= '3.7.1' and python_full_version < '3.7.2' and platform_machine == 'arm64'",
+    "python_full_version < '3.7.1'",
+]
+dependencies = [
+    { name = "typing-extensions", version = "3.10.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.7.2'" },
+    { name = "typing-extensions", version = "4.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.7.2' and python_full_version < '3.8'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/72/8259b2bccfe4673330cea843ab23f86858a419d8f1493f66d413a76c7e3b/PyJWT-2.8.0.tar.gz", hash = "sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de", size = 78313, upload-time = "2023-07-18T20:02:22.594Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/4f/e04a8067c7c96c364cef7ef73906504e2f40d690811c021e1a1901473a19/PyJWT-2.8.0-py3-none-any.whl", hash = "sha256:59127c392cc44c2da5bb3192169a91f429924e17aff6534d70fdc02ab3e04320", size = 22591, upload-time = "2023-07-18T20:02:21.561Z" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.9.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version == '3.8.*'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/68/ce067f09fca4abeca8771fe667d89cc347d1e99da3e093112ac329c6020e/pyjwt-2.9.0.tar.gz", hash = "sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c", size = 78825, upload-time = "2024-08-01T15:01:08.445Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/84/0fdf9b18ba31d69877bd39c9cd6052b47f3761e9910c15de788e519f079f/PyJWT-2.9.0-py3-none-any.whl", hash = "sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850", size = 22344, upload-time = "2024-08-01T15:01:06.481Z" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.10.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+    "python_full_version == '3.9.*'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e7/46/bd74733ff231675599650d3e47f361794b22ef3e3770998dda30d3b63726/pyjwt-2.10.1.tar.gz", hash = "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953", size = 87785, upload-time = "2024-11-28T03:43:29.933Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/ad/689f02752eeec26aed679477e80e632ef1b682313be70793d798c1d5fc8f/PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb", size = 22997, upload-time = "2024-11-28T03:43:27.893Z" },
 ]
 
 [[package]]
