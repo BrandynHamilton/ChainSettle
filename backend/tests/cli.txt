@@ -9,3 +9,5 @@ R$3/:78z
 ##Personal
 sb-w7oqu40942591@personal.example.com
 1eh)_t_N
+
+uv run python stress_test.py --settlement-id sadfv23a --workers 100 --num-requests 2000 --local

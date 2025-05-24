@@ -10,34 +10,57 @@ contract SettlementRegistry {
     enum Status { Unverified, Confirmed, Failed }
 
     struct Settlement {
-        string settlementId;
+        string settlementId;    // full text
         string settlementType;
-        Status status;     // last owner proposal
+        Status status;          // last owner proposal
         string metadata;
         uint256 amount;
+        address payer; // optional
     }
 
-    IValidatorRegistry public validatorRegistry;
-    address public owner;
+    IValidatorRegistry public immutable validatorRegistry;
+    address public immutable owner;
 
-    // Owner proposals
-    mapping(string => Settlement) public settlements;
-    string[] public settlementIds;
+    // key the mapping by the hash of settlementId
+    mapping(bytes32 => Settlement)           public settlements;
+    bytes32[]                                public settlementIdHashes;
+    string[]                                 public settlementIds;
 
-    // Voting state
-    mapping(string => mapping(address => bool))  public hasVoted;
-    mapping(string => uint256)                   public agreeVotes;
-    mapping(string => uint256)                   public disagreeVotes;
-    mapping(string => bool)                      public finalized;
-    mapping(string => bool)                      public confirmedLock;  // lock only on true Confirmed
+    // voting / re-proposal state (unchanged)
+    mapping(bytes32 => mapping(address => bool))  public hasVoted;
+    mapping(bytes32 => uint256)                   public agreeVotes;
+    mapping(bytes32 => uint256)                   public disagreeVotes;
+    mapping(bytes32 => bool)                      public finalized;
+    mapping(bytes32 => bool)                      public confirmedLock;
+    mapping(bytes32 => uint256)                   public proposalNonce;
+    mapping(bytes32 => mapping(address => uint256)) public lastVotedNonce;
 
-    // Proposal / vote nonces, to allow re-voting on new proposals
-    mapping(string => uint256)                   public proposalNonce;
-    mapping(string => mapping(address => uint256)) public lastVotedNonce;
+    mapping(address => bytes32[]) private _settlementsByPayer;
 
-    event SettlementInitialized(string indexed settlementId, string settlementType, string metadata, uint256 amount);
-    event Attested(            string indexed settlementId, string settlementType, Status status,   string metadata, uint256 amount);
-    event SettlementValidated( string indexed settlementId, Status finalStatus);
+    // now index only the fixed-size hash
+    event SettlementInitialized(
+      bytes32 indexed idHash,
+      address  indexed payer,
+      string   settlementId,
+      string   settlementType,
+      string   metadata,
+      uint256  amount
+    );
+    event Attested(
+      bytes32 indexed idHash,
+      address  indexed payer,
+      string   settlementId,
+      string   settlementType,
+      Status   statusProposal,
+      string   metadata,
+      uint256  amount
+      
+    );
+    event SettlementValidated(
+      bytes32 indexed idHash,
+      string   settlementId,
+      Status   finalStatus
+    );
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Unauthorized");
@@ -53,90 +76,139 @@ contract SettlementRegistry {
         string calldata settlementId,
         string calldata settlementType,
         string calldata metadata,
-        uint256      amount
+        uint256      amount,
+        address       payer
     ) external onlyOwner {
-        require(bytes(settlements[settlementId].settlementId).length == 0, "Already initialized");
-        settlements[settlementId] = Settlement(settlementId, settlementType, Status.Unverified, metadata, amount);
+        bytes32 idHash = keccak256(abi.encodePacked(settlementId));
+        require(bytes(settlements[idHash].settlementId).length == 0, "Already initialized");
+
+        settlements[idHash] = Settlement(settlementId, settlementType, Status.Unverified, metadata, amount, payer);
+        settlementIdHashes.push(idHash);
         settlementIds.push(settlementId);
-        emit SettlementInitialized(settlementId, settlementType, metadata, amount);
+
+        _settlementsByPayer[payer].push(idHash);
+
+        emit SettlementInitialized(idHash, payer, settlementId, settlementType, metadata, amount);
     }
 
     function attest(
         string calldata settlementId,
-        string calldata settlementType,
         Status        statusProposal,
         string calldata metadata,
         uint256       amount
     ) external onlyOwner {
-        require(bytes(settlements[settlementId].settlementId).length != 0,     "Not initialized");
-        require(!confirmedLock[settlementId],                                  "Already confirmed");
+        bytes32 idHash = keccak256(abi.encodePacked(settlementId));
+        require(bytes(settlements[idHash].settlementId).length != 0, "Not initialized");
+        require(!confirmedLock[idHash], "Already confirmed");
 
-        // Update owner’s proposal
-        settlements[settlementId] = Settlement(settlementId, settlementType, statusProposal, metadata, amount);
+        address payer = settlements[idHash].payer; // We need to keep the payer from the original initAttest
+        string memory settlementType = settlements[idHash].settlementType; // We need to keep the settlementType from the original initAttest
 
-        // Reset voting state for this new proposal
-        proposalNonce[settlementId] += 1;
-        agreeVotes[settlementId]    = 0;
-        disagreeVotes[settlementId] = 0;
-        finalized[settlementId]     = false;
 
-        emit Attested(settlementId, settlementType, statusProposal, metadata, amount);
+        // overwrite the owner proposal
+        settlements[idHash] = Settlement(settlementId, settlementType, statusProposal, metadata, amount, payer);
+
+        // reset for a fresh voting round
+        proposalNonce[idHash]   += 1;
+        agreeVotes[idHash]       = 0;
+        disagreeVotes[idHash]    = 0;
+        finalized[idHash]        = false;
+
+        emit Attested(idHash, payer, settlementId, settlementType, statusProposal, metadata, amount);
     }
 
     function voteOnSettlement(string calldata settlementId, bool agree) external {
+        bytes32 idHash = keccak256(abi.encodePacked(settlementId));
         require(validatorRegistry.isValidator(msg.sender), "Not a validator");
-        require(lastVotedNonce[settlementId][msg.sender] < proposalNonce[settlementId],
-                "Already voted this round");
-        require(!finalized[settlementId], "Already finalized");
+        require(lastVotedNonce[idHash][msg.sender] < proposalNonce[idHash], "Already voted this round");
+        require(!finalized[idHash], "Already finalized");
 
-        // record vote
-        lastVotedNonce[settlementId][msg.sender] = proposalNonce[settlementId];
+        lastVotedNonce[idHash][msg.sender] = proposalNonce[idHash];
         if (agree) {
-            agreeVotes[settlementId] += 1;
+            agreeVotes[idHash] += 1;
         } else {
-            disagreeVotes[settlementId] += 1;
+            disagreeVotes[idHash] += 1;
         }
 
         uint256 totalValidators = validatorRegistry.getValidatorCount();
-        // ceil(2/3 * totalValidators) = (2*TV + 2)/3
-        uint256 threshold = (2 * totalValidators + 2) / 3;
+        uint256 threshold       = (2 * totalValidators + 2) / 3; // ceil(2/3 * TV)
 
-        // finalize as soon as one side hits threshold
-        if (agreeVotes[settlementId] >= threshold) {
-            _finalize(settlementId, true);
-        } else if (disagreeVotes[settlementId] >= threshold) {
-            _finalize(settlementId, false);
+        if (agreeVotes[idHash] >= threshold) {
+            _finalize(idHash, settlementId, true);
+        } else if (disagreeVotes[idHash] >= threshold) {
+            _finalize(idHash, settlementId, false);
         }
     }
 
-    function _finalize(string calldata settlementId, bool didAgree) private {
-        finalized[settlementId] = true;
+    function _finalize(bytes32 idHash, string calldata settlementId, bool didAgree) private {
+        finalized[idHash] = true;
 
-        // Only lock further attest() calls when the owner truly proposed Confirmed
-        if (didAgree && settlements[settlementId].status == Status.Confirmed) {
-            confirmedLock[settlementId] = true;
+        // only lock out further attest() if the owner actually proposed Confirmed
+        if (didAgree && settlements[idHash].status == Status.Confirmed) {
+            confirmedLock[idHash] = true;
         }
 
-        // Always maintain the owner's proposal (Confirmed or Failed)
-        Status finalStatus = settlements[settlementId].status;
-
-        settlements[settlementId].status = finalStatus;
-        emit SettlementValidated(settlementId, finalStatus);
+        Status finalStatus = settlements[idHash].status;
+        emit SettlementValidated(idHash, settlementId, finalStatus);
     }
 
-    function getSettlement(string calldata settlementId) external view returns (Settlement memory) {
-        return settlements[settlementId];
+    /// @notice return all settlement hashes
+    function getSettlementIdHashes() external view returns (bytes32[] memory) {
+        return settlementIdHashes;
     }
-    
+
+    /// @notice Return all idHashes for settlements this address paid for
+    function getSettlementsByPayer(address payer)
+        external
+        view
+        returns (bytes32[] memory)
+        {
+        return _settlementsByPayer[payer];
+        }
+
     /// @notice Return all initialized settlement IDs
     function getSettlementIds() external view returns (string[] memory) {
         return settlementIds;
     }
 
+    /// @notice read the full struct
+    function getSettlement(bytes32 idHash) external view returns (Settlement memory) {
+        return settlements[idHash];
+    }
+
+    /// @notice Lookup by human-readable ID, so callers don’t have to hash it themselves
+    function getSettlementById(string calldata settlementId)
+    external
+    view
+    returns (
+        string memory _settlementId,
+        string memory settlementType,
+        Status        status,
+        string memory metadata,
+        uint256       amount,
+        address       payer
+    )
+    {
+        bytes32 idHash = keccak256(abi.encodePacked(settlementId));
+        Settlement storage s = settlements[idHash];
+        require(bytes(s.settlementId).length != 0, "Not found");
+        return (
+        s.settlementId,
+        s.settlementType,
+        s.status,
+        s.metadata,
+        s.amount,
+        s.payer
+        );
+    }
+
+    function getCounterparty(bytes32 idHash) external view returns (address) {
+        return settlements[idHash].payer;
+        }
+
     function isValidator(address _addr) public view returns (bool) {
         return validatorRegistry.isValidator(_addr);
     }
-
     function getValidatorCount() public view returns (uint256) {
         return validatorRegistry.getValidatorCount();
     }

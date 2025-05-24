@@ -8,8 +8,10 @@ from dotenv import load_dotenv, set_key
 import json
 import smtplib
 from email.message import EmailMessage
+from typing import Optional, List, Dict
 
 from chainsettle.web3_utils import attest_onchain, init_attest_onchain
+from chainsettle.metadata import ZERO_ADDRESS
 
 def parse_date(value, fallback):
     if isinstance(value, str):
@@ -67,8 +69,6 @@ def prepare_email_response(base_response):
 # Helper functions for onchain settlement registration and attestation
 def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, metadata):
     print(f'tx: {tx}')
-    settlement_type = tx.get('settlement_type', 'unknown')
-    print(f'Settlement Type: {settlement_type}')
 
     try:
         receipts = attest_onchain(
@@ -77,7 +77,6 @@ def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, se
             REGISTRY_ADDRESS=REGISTRY_ADDRESS,
             REGISTRY_ABI=REGISTRY_ABI,
             amount=amount,
-            settlement_type=settlement_type,
             settlement_id=settlement_id,
             status_enum=status_enum,
             details=metadata
@@ -116,13 +115,16 @@ def attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, se
 def init_attest_util(tx, url, w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, metadata, wait_seconds=3, max_retries=5):
     print(f'tx: {tx}')
     settlement_type = tx.get('settlement_type', 'unknown')
+    payer = tx.get('payer')
     print(f'Settlement Type: {settlement_type}')
+    print(f'Payer: {payer}')
 
     try:
-        receipt = init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, details=metadata)
+        receipt = init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, 
+                                      settlement_type, amount, settlement_id, payer, 
+                                      details=metadata)
         tx_hash = '0x' + receipt.transactionHash.hex()
         tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-
 
         time.sleep(wait_seconds)
 
@@ -165,25 +167,97 @@ def get_settlement_info(cache, settlement_id: str):
 
     return settlement_info
 
-def is_settlement_initialized_onchain(settlement_id: str, contract) -> bool:
+def is_settlement_initialized_onchain(
+    settlement_id: str,
+    contract
+) -> bool:
     """
-    Returns True if the settlement_id is already initialized onchain.
+    Returns True if the settlement_id has been initAttest()’d on-chain.
+    Relies on getSettlementById reverting when not found.
     """
-    onchain_data = contract.functions.settlements(settlement_id).call()
-    return onchain_data[0] != ''  # settlementId field
+    try:
+        # new ABI returns 6-tuple: (sid, type, status, meta, amount, payer)
+        onchain = contract.functions.getSettlementById(settlement_id).call()
+    except Exception:
+        return False
+    return bool(onchain[0])  # non-empty settlementId string
 
-def is_settlement_confirmed_onchain(settlement_id: str, contract) -> bool:
+
+def is_settlement_confirmed_onchain(
+    settlement_id: str,
+    contract
+) -> bool:
     """
-    Returns True if the settlement_id has status 1 (Confirmed).
+    Returns True if the settlement_id has Status.Confirmed on-chain.
+    new ABI returns 6 values; status is index 2.
     """
-    onchain_data = contract.functions.settlements(settlement_id).call()
-    print(f"Settlement ID: {settlement_id}, Onchain Data: {onchain_data}")
-    print(f'onchain_data[2] == 1: {onchain_data[2] == 1}')
-    print(f'onchain_data[2]: {onchain_data[2]}')
-    print(f"onchain_data type: {type(onchain_data)}")
-    for i in onchain_data:
-        print(f"onchain_data: {i}")
-    return onchain_data[2] == 1  # Status enum: 0=Unverified, 1=Confirmed, 2=Failed
+    _, _, status, _, _, _ = contract.functions.getSettlementById(settlement_id).call()
+    # enum: Unverified=0, Confirmed=1, Failed=2
+    return int(status) == 1
+
+
+def fetch_settlement_from_chain(
+    settlement_id: str,
+    contract
+) -> Dict[str, Optional[str]]:
+    """
+    Queries getSettlementById and returns a dict with all fields, including payer.
+    """
+    sid, stype, status, meta, amt, payer = \
+        contract.functions.getSettlementById(settlement_id).call()
+    return {
+        "settlementId":   sid,
+        "settlementType": stype,
+        "status":         int(status),
+        "metadata":       meta,
+        "amount":         amt,
+        "payer":          payer,
+    }
+
+
+def get_counterparty_onchain(
+    w3,
+    settlement_id: str,
+    contract
+) -> str:
+    """
+    Computes the idHash from settlement_id and calls the new getCounterparty(bytes32) view.
+    """
+    id_hash = w3.keccak(text=settlement_id)
+    return contract.functions.getCounterparty(id_hash).call()
+
+
+def fetch_settlements_by_payer_onchain(
+    payer_address: str,
+    contract
+) -> List[bytes]:
+    """
+    Returns the list of idHashes this payer created, via getSettlementsByPayer(address).
+    """
+    return contract.functions.getSettlementsByPayer(payer_address).call()
+
+
+def fetch_all_settlements_for_payer(
+    payer_address: str,
+    registry_contract
+) -> List[Dict]:
+    """
+    Convenience: fetch idHashes for a payer, then fetch each settlement struct.
+    """
+    id_hashes = fetch_settlements_by_payer_onchain(payer_address, registry_contract)
+    settlements = []
+    for id_hash in id_hashes:
+        # getSettlement returns the full struct via the hash key:
+        s = registry_contract.functions.getSettlement(id_hash).call()
+        settlements.append({
+            "settlementId":   s[0],
+            "settlementType": s[1],
+            "status":         int(s[2]),
+            "metadata":       s[3],
+            "amount":         s[4],
+            "payer":          s[5],
+        })
+    return settlements
 
 def is_settlement_registered_locally(cache, settlement_id: str) -> bool:
     """

@@ -60,6 +60,7 @@ class PayPalModule:
         amount_str = f"{amount:.2f}"
         order_data = {
             "intent": "CAPTURE",
+            "payer": recipient_email,
             "purchase_units": [{
                 "amount": {
                     "currency_code": currency,

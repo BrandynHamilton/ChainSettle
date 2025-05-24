@@ -3,3 +3,6 @@ docker build --no-cache -t brandynham/chainsettle-api .
 for /f %i in ('powershell -Command "Get-Date -Format yyyyMMddHHmmss"') do set TAG=v0.1.2-%i
 docker tag brandynham/chainsettle-api brandynham/chainsettle-api:%TAG%
 docker push brandynham/chainsettle-api:%TAG%
+
+docker run -d --name chainsettle --env-file .env -p 5045:5045 brandynham/chainsettle-api:latest
+

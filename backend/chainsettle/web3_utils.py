@@ -15,7 +15,11 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests import exceptions as req_ex
 
 from chainsettle.wallet import generate_wallet 
-from chainsettle.metadata import SUPPORTED_NETWORKS
+from chainsettle.metadata import SUPPORTED_NETWORKS, ZERO_ADDRESS
+
+global _next_nonce
+
+_next_nonce = {}
 
 def network_func(PRIVATE_KEY, network='ethereum',ALCHEMY_API_KEY=None):
     if network not in SUPPORTED_NETWORKS:
@@ -64,7 +68,22 @@ def network_func(PRIVATE_KEY, network='ethereum',ALCHEMY_API_KEY=None):
     else:
         print(f"Failed to connect to {network}")
 
-def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, details = ""):
+def normalize_payer(raw_payer: str, w3: Web3) -> str:
+    """
+    Return a valid checksummed address for raw_payer, or the zero-address if raw_payer is falsy.
+    Raises ValueError if raw_payer is non-empty but not a valid hex address.
+    """
+    if not raw_payer:
+        return ZERO_ADDRESS
+
+    # Optional quick length/format check
+    if not raw_payer.startswith("0x") or len(raw_payer) != 42:
+        raise ValueError(f"Invalid address format: '{raw_payer}'")
+
+    # This will raise ValueError if the hex is malformed or the checksum is wrong
+    return w3.to_checksum_address(raw_payer)
+
+def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_type, amount, settlement_id, payer, details = ""):
 
     settlement_registry_obj = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
@@ -76,7 +95,8 @@ def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_
         settlement_id,
         settlement_type,
         details,
-        amount_scaled
+        amount_scaled,
+        payer
     ).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
@@ -97,7 +117,7 @@ def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_
         "to": REGISTRY_ADDRESS,
         "nonce": base_tx["nonce"],
         "data": base_tx["data"],
-        "gas": int(gas_estimate * 1.2),  # 20% buffer
+        "gas": int(gas_estimate * 1.5),  # 50% buffer
         "maxPriorityFeePerGas": priority_fee,
         "maxFeePerGas": max_fee,
         "chainId": w3.eth.chain_id,
@@ -112,9 +132,9 @@ def init_attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, settlement_
 
     return receipt
 
-def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_type, settlement_id, status_enum, details = ""):
+def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settlement_id, status_enum, details = ""):
 
-    print(f'Attesting settlement {settlement_id} with amount {amount} and type {settlement_type}')
+    print(f'Attesting settlement {settlement_id} with amount {amount}')
 
     settlement_registry_obj = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
@@ -128,7 +148,6 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
     # === Build the base tx without gas, to estimate ===
     base_tx = settlement_registry_obj.functions.attest(
         settlement_id,
-        settlement_type,
         status_enum,
         details,
         amount_scaled
@@ -152,7 +171,7 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
         "to": REGISTRY_ADDRESS,
         "nonce": base_tx["nonce"],
         "data": base_tx["data"],
-        "gas": int(gas_estimate * 1.2),  # 20% buffer
+        "gas": int(gas_estimate * 1.5),  # 50% buffer
         "maxPriorityFeePerGas": priority_fee,
         "maxFeePerGas": max_fee,
         "chainId": w3.eth.chain_id,
@@ -177,7 +196,7 @@ def attest_onchain(w3, account, REGISTRY_ADDRESS, REGISTRY_ABI, amount, settleme
 
     validator_gas_estimate = w3.eth.estimate_gas(validation_tx) 
 
-    validation_tx['gas'] = int(validator_gas_estimate * 1.2)  # 20% buffer
+    validation_tx['gas'] = int(validator_gas_estimate * 1.5)  # 20% buffer
     validation_tx['maxPriorityFeePerGas'] = priority_fee
     validation_tx['maxFeePerGas'] = max_fee
 
@@ -270,80 +289,80 @@ def get_validator_list(
 
     return owner, validator_count, validator_registry
 
-def add_validator(
-    private_key, 
-    network,
-    config,
-    new_validator_address=None
-):
-    # Connect to network
-    w3, _ = network_func(network=network, ALCHEMY_API_KEY=os.getenv('ALCHEMY_API_KEY'), PRIVATE_KEY=private_key)
+def send_with_nonce_retry(w3, account, tx_dict, max_retries=2):
+    """
+    Sign & send tx_dict, retrying once if we get a 'nonce too low' error,
+    by re-syncing the nonce from the pending queue.
+    """
+    for attempt in range(1, max_retries+1):
+        # make sure we always use the current pending nonce
+        tx_dict['nonce'] = w3.eth.get_transaction_count(account.address, "pending")
+        signed = account.sign_transaction(tx_dict)
+        try:
+            return w3.eth.send_raw_transaction(signed.raw_transaction)
+        except ValueError as e:
+            msg = str(e)
+            if "nonce too low" in msg and attempt < max_retries:
+                # wait a hair and retry
+                time.sleep(0.2)
+                continue
+            raise
 
-    VALIDATOR_REGISTRY_ADDRESS = config[network]['registry_addresses']['ValidatorRegistry']
-    VALIDATOR_ABI = config[network]['abis']['ValidatorRegistry']
+def get_next_nonce(w3, address):
+    key = (w3.provider.endpoint_uri, address)
+    if key not in _next_nonce:
+        # grab the first nonce once
+        _next_nonce[key] = w3.eth.get_transaction_count(address, "pending")
+    n = _next_nonce[key]
+    _next_nonce[key] += 1
+    return n
 
-    # with open(VALIDATOR_ABI, 'r') as f:
-    #     abi_data = json.load(f)
+def send_tx(w3, account, tx_dict):
+    # caller must have put everything except nonce in tx_dict
+    tx_dict["nonce"] = get_next_nonce(w3, account.address)
+    signed = account.sign_transaction(tx_dict)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    return tx_hash
 
-    # Load account
+def add_validator(private_key, network, config, new_validator_address=None):
+    w3, _ = network_func(network=network,
+                         ALCHEMY_API_KEY=os.getenv('ALCHEMY_API_KEY'),
+                         PRIVATE_KEY=private_key)
     account = w3.eth.account.from_key(private_key)
+    addr = config[network]['registry_addresses']['ValidatorRegistry']
+    abi  = config[network]['abis']['ValidatorRegistry']
+    c    = w3.eth.contract(address=addr, abi=abi)
 
-    contract_obj = w3.eth.contract(address=VALIDATOR_REGISTRY_ADDRESS,abi=VALIDATOR_ABI)
+    owner = c.functions.owner().call()
+    if account.address.lower() != owner.lower():
+        raise Exception("must be owner")
 
-    owner = contract_obj.functions.owner().call()
-    validator_count = contract_obj.functions.getValidatorCount().call()
-    validator_registry = contract_obj.functions.getValidators().call()
+    to_add = new_validator_address or owner
+    if to_add in c.functions.getValidators().call():
+        raise Exception(f"{to_add} already registered")
 
-    if account.address != owner:
-        raise Exception(f"Account {account.address} is not the owner of the contract {VALIDATOR_REGISTRY_ADDRESS}.")
+    checksum = w3.to_checksum_address(to_add)
+    gas_est = c.functions.registerValidator(checksum).estimate_gas({'from': account.address})
+    latest  = w3.eth.get_block("latest")
+    base_fee      = latest.get("baseFeePerGas", w3.to_wei(1, "gwei"))
+    priority_fee  = w3.to_wei(2, "gwei")
+    max_fee       = base_fee + 2*priority_fee
 
-    print(F'validator_count: {validator_count}')
-    print(F'validator_registry: {validator_registry}')
+    tx = c.functions.registerValidator(checksum).build_transaction({
+        'from': account.address,
+        'gas': int(gas_est * 1.2),
+        'maxFeePerGas':      max_fee,
+        'maxPriorityFeePerGas': priority_fee,
+        # nonce will be filled in send_with_nonce_retry
+    })
 
-    if new_validator_address is None:
-        new_validator_address = owner
-
-    if new_validator_address:
-        if new_validator_address in validator_registry:
-            raise Exception(f"Validator {new_validator_address} is already registered.")
-        else:
-            print(f"Adding new validator: {new_validator_address}")
-
-            new_validator_address_checksum = w3.to_checksum_address(new_validator_address)
-            print(f"Checksum address: {new_validator_address_checksum}")
-
-            estimated_gas = contract_obj.functions.registerValidator(new_validator_address_checksum).estimate_gas({
-                "from": account.address,
-            })
-
-            latest_block = w3.eth.get_block("latest")
-            base_fee = latest_block.get("baseFeePerGas", w3.to_wei(1, "gwei"))
-            max_priority_fee = w3.to_wei("2", "gwei")
-            max_fee = base_fee + max_priority_fee * 2
-                
-            try:
-                tx = contract_obj.functions.registerValidator(new_validator_address_checksum).build_transaction({
-                    "from": account.address,
-                    "nonce": w3.eth.get_transaction_count(account.address),
-                    "gas": int(estimated_gas * 1.2),
-                    "maxFeePerGas": max_fee,
-                    "maxPriorityFeePerGas": max_priority_fee,
-                    "type": 2,
-                })
-                signed_tx = w3.eth.account.sign_transaction(tx, private_key=private_key)
-                tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-
-                print(f"Sent transaction: {tx_hash.hex()}")
-
-                receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-
-                if receipt.status == 1:
-                    print(f'validator {new_validator_address} added successfully.')
-                    return True
-            except Exception as e:
-                raise Exception(f"Failed to build transaction: {e}")
-    else:
-        raise Exception("No new validator address provided.")
+    print(f"Sending registerValidator({checksum})…")
+    tx_hash = send_tx(w3, account, tx)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if receipt.status != 1:
+        raise Exception("validator registration failed")
+    print("✅ registered", checksum)
+    return True
 
 def deploy_contract(
     private_key, 
@@ -424,8 +443,7 @@ def deploy_contract(
             f"Have: {w3.from_wei(native_balance, 'ether')} - Need: {w3.from_wei(estimated_cost, 'ether')}"
         )
 
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=private_key)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    tx_hash = send_tx(w3, account, tx)
 
     print(f"Sent transaction: {tx_hash.hex()}")
 
@@ -474,7 +492,7 @@ def is_validator(w3, VALIDATOR_REGISTRY_ADDRESS, abi_data, account):
 
 def wait_for_finalization_event(w3, contract, settlement_id, poll_interval=3, timeout=60):
     """
-    Waits for a SettlementFinalized event using block polling.
+    Waits for a SettlementValidated event using block polling.
     More resilient for networks like Ethereum/Sepolia where logs may not appear immediately.
     """
     print(f"Waiting for finalization of settlement {settlement_id}...")
@@ -486,7 +504,7 @@ def wait_for_finalization_event(w3, contract, settlement_id, poll_interval=3, ti
         try:
             current_block = w3.eth.block_number
             # We query a range of blocks, widening the window if needed
-            logs = contract.events.SettlementFinalized().get_logs(
+            logs = contract.events.SettlementValidated().get_logs(
                 from_block=max(from_block - 5, 0),
                 to_block=current_block
             )
@@ -504,19 +522,19 @@ def wait_for_finalization_event(w3, contract, settlement_id, poll_interval=3, ti
                 print(f"❌ Unexpected error: {e}")
             time.sleep(poll_interval)
 
-    raise TimeoutError(f"❌ Timeout: SettlementFinalized event not detected within {timeout} seconds.")
+    raise TimeoutError(f"❌ Timeout: SettlementValidated event not detected within {timeout} seconds.")
 
 def create_wallet():
     """Create a new wallet."""
     private_key, address = generate_wallet()
     return private_key, address
 
-def handle_attestation(w3, contract, account, event, processed_settlements, max_retries=3, retry_delay=3):
+def handle_attestation(w3, contract, account, event, max_retries=3, retry_delay=3):
     settlement_id = event["args"]["settlementId"]
 
-    if settlement_id in processed_settlements:
-        print(f"[{w3.provider.endpoint_uri}] 🔁 Skipping already-processed {settlement_id}")
-        return
+    # if settlement_id in processed_settlements:
+    #     print(f"[{w3.provider.endpoint_uri}] 🔁 Skipping already-processed {settlement_id}")
+    #     return
 
     print(f"[{w3.provider.endpoint_uri}] Detected Attested: {settlement_id}")
 
@@ -535,7 +553,7 @@ def handle_attestation(w3, contract, account, event, processed_settlements, max_
             })
 
             estimated_gas = w3.eth.estimate_gas(tx)
-            tx['gas'] = int(estimated_gas * 1.2)
+            tx['gas'] = int(estimated_gas * 1.5)
             tx['maxPriorityFeePerGas'] = priority_fee
             tx['maxFeePerGas'] = max_fee
             tx['type'] = 2
@@ -545,7 +563,7 @@ def handle_attestation(w3, contract, account, event, processed_settlements, max_
             receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
             if receipt.status == 1:
-                processed_settlements.add(settlement_id)
+                # processed_settlements.add(settlement_id)
                 print(f"[{w3.provider.endpoint_uri}] ✅ Voted on {settlement_id}, tx: {receipt.transactionHash.hex()}")
                 return
             else:
@@ -556,7 +574,7 @@ def handle_attestation(w3, contract, account, event, processed_settlements, max_
             # Detect "Already voted" revert reason
             if "Already voted" in msg:
                 print(f"[{w3.provider.endpoint_uri}] 🔁 Already voted on {settlement_id}. Skipping.")
-                processed_settlements.add(settlement_id)
+                # processed_settlements.add(settlement_id)
                 return
 
             print(f"[{w3.provider.endpoint_uri}] ⚠️ Attempt {attempt} failed for {settlement_id}: {msg}")
@@ -587,7 +605,7 @@ def save_last_block(network, block_number):
 
 def start_listener(network, private_key, config, ALCHEMY_API_KEY):
     print(f"[{network.upper()}] Connecting...")
-    processed_settlements = set()
+    # processed_settlements = set()
 
     w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=private_key)
 
@@ -616,7 +634,7 @@ def start_listener(network, private_key, config, ALCHEMY_API_KEY):
                     try:
                         events = contract.events.Attested.get_logs(from_block=last_block + 1, to_block=current_block)
                         for event in events:
-                            handle_attestation(w3, contract, account, event, processed_settlements)
+                            handle_attestation(w3, contract, account, event)
                         last_block = current_block
                         save_last_block(network, last_block)
                     except ValueError as e:
@@ -669,7 +687,7 @@ def start_listener(network, private_key, config, ALCHEMY_API_KEY):
                         raise
 
                 for event in entries:
-                    handle_attestation(w3, contract, account, event, processed_settlements)
+                    handle_attestation(w3, contract, account, event)
 
             except Exception as e:
                 print(f"[{network.upper()}] ⚠️ Listener error: {e}")

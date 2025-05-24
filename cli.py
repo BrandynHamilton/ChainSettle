@@ -13,7 +13,7 @@ from docusign_esign import RecipientViewRequest, EnvelopesApi
 
 import time
 
-from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS, get_docusign_client, SUPPORTED_ASSET_CATEGORIES, SUPPORTED_JURISDICTIONS
+from chainsettle import SUPPORTED_APIS, SUPPORTED_NETWORKS, SUPPORTED_ASSET_CATEGORIES, SUPPORTED_JURISDICTIONS
 
 load_dotenv()
 
@@ -68,6 +68,7 @@ def cli():
 @click.option('--settlement-id', required=True, help='Unique identifier for the settlement')
 @click.option('--amount', required=False, type=float, default=0.0, help='Expected transfer amount, expected for Plaid, PayPal type')
 @click.option('--network', required=True, type=click.Choice(SUPPORTED_NETWORKS), help="Target chain")
+@click.option('--payer', required=False, help='Payer blockchain address (optional, must start with 0x)')
 @click.option('--owner', required=False, help='GitHub repo owner (github only)')
 @click.option('--repo', required=False, help='GitHub repo name (github only)')
 @click.option('--tag', required=False, help='GitHub release tag (github only)')
@@ -83,7 +84,7 @@ def cli():
 @click.option('--rwa-jurisdiction', type=click.Choice(SUPPORTED_JURISDICTIONS), help='Jurisdiction of the RWA')
 @click.option('--notify-email', default=None, help='Email to notify.')
 @click.option('--local', is_flag=True, default=False, help='If developing locally, uses env Local URL var.')
-def init_attest(settlement_type, settlement_id, amount, network, owner, repo, tag, path, branch, metadata, recipient_email, pdf_path, 
+def init_attest(settlement_type, settlement_id, amount, network, payer, owner, repo, tag, path, branch, metadata, recipient_email, pdf_path, 
                 rwa_name, rwa_issuer, rwa_value_usd, rwa_category, rwa_jurisdiction, notify_email, local):
     """
     Initializes the attestation process.
@@ -114,7 +115,7 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
             res.raise_for_status()
             link_token = res.json()["link_token"]
 
-            link_url = f"{BACKEND_URL}/plaid?token={link_token}&settlement_type={settlement_type}&settlement_id={settlement_id}&amount={amount}&network={network}&metadata={metadata}&notify_email={notify_email}"
+            link_url = f"{BACKEND_URL}/plaid?token={link_token}&settlement_type={settlement_type}&settlement_id={settlement_id}&amount={amount}&network={network}&metadata={metadata}&notify_email={notify_email}&payer={payer}"
             click.echo(f"Link token created. Open the following URL to link your bank account:\n{link_url}")
 
             if click.confirm("Open in browser now?", default=True):
@@ -138,7 +139,8 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
                 "network": network,
                 "settlement_type": settlement_type,
                 "metadata":metadata,
-                "notify_email": notify_email
+                "notify_email": notify_email,
+                "payer": payer
             })
             res.raise_for_status()
             settlement_info = res.json()["settlement_info"]
@@ -160,6 +162,7 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
                 "amount":             str(amount),
                 "settlement_id":      settlement_id,
                 "network":            network,
+                "payer":              payer,
                 "settlement_type":    settlement_type,
                 "rwa_name":           rwa_name,
                 "rwa_issuer":         rwa_issuer,
@@ -203,6 +206,7 @@ def init_attest(settlement_type, settlement_id, amount, network, owner, repo, ta
                 "branch": branch,
                 "settlement_id": settlement_id,
                 "network": network,
+                "payer": payer,
                 "settlement_type": settlement_type,
                 "metadata":metadata,
                 "notify_email": notify_email

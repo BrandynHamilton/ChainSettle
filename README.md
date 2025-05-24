@@ -211,4 +211,4 @@ We are working on:
 
 ## Contact Info
 
-- [General@ChainSettle.tech](mailto:General@ChainSettle.tech)
+- [brandynhamilton@gmail.com](mailto:brandynhamilton@gmail.com)

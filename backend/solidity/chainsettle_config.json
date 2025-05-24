@@ -2,8 +2,8 @@
   "ethereum": {
     "explorer_url": "https://sepolia.etherscan.io/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x5593da80774b1E8985233E1eb4F8Aa1E8D759BF9",
-      "ValidatorRegistry": "0xf944905c98Ff59ccBFacd5B33B1f22f4EDF75B40"
+      "SettlementRegistry": "0x64af6d4C1f2bC29E6f24750A8c0aF85af132734e",
+      "ValidatorRegistry": "0x5BAd2c67e85f0B612c2080C8a03F063E7E6F131d"
     },
     "abis": {
       "SettlementRegistry": [
@@ -23,6 +23,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -36,7 +48,7 @@
             {
               "indexed": false,
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -60,6 +72,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -91,6 +115,12 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -108,9 +138,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "agreeVotes",
@@ -129,11 +159,6 @@
             {
               "internalType": "string",
               "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "settlementType",
               "type": "string"
             },
             {
@@ -160,9 +185,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "confirmedLock",
@@ -179,9 +204,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "disagreeVotes",
@@ -198,9 +223,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "finalized",
@@ -217,9 +242,28 @@
         {
           "inputs": [
             {
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getCounterparty",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
             }
           ],
           "name": "getSettlement",
@@ -250,11 +294,73 @@
                   "internalType": "uint256",
                   "name": "amount",
                   "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "payer",
+                  "type": "address"
                 }
               ],
               "internalType": "struct SettlementRegistry.Settlement",
               "name": "",
               "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlementById",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "_settlementId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "settlementType",
+              "type": "string"
+            },
+            {
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "metadata",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "getSettlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -268,6 +374,25 @@
               "internalType": "string[]",
               "name": "",
               "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "name": "getSettlementsByPayer",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -289,9 +414,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -331,6 +456,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "name": "initAttest",
@@ -360,9 +490,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -397,9 +527,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "proposalNonce",
@@ -408,6 +538,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
             }
           ],
           "stateMutability": "view",
@@ -435,9 +584,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "settlements",
@@ -466,6 +615,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "stateMutability": "view",
@@ -637,8 +791,8 @@
   "blockdag": {
     "explorer_url": "https://primordial.bdagscan.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x30a773af170a89d55f1944ef4729C1604D00C77A",
-      "ValidatorRegistry": "0x8b7092d69a9b00363070E508673656E0f9e46bcD"
+      "SettlementRegistry": "0x83BB62F67347C6Ad0fccBfDa143e1200B50F9Cb3",
+      "ValidatorRegistry": "0xB832D8FAf9eAe358e3DD731a949B62a8a21f8b4C"
     },
     "abis": {
       "SettlementRegistry": [
@@ -658,6 +812,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -671,7 +837,7 @@
             {
               "indexed": false,
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -695,6 +861,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -726,6 +904,12 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -743,9 +927,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "agreeVotes",
@@ -764,11 +948,6 @@
             {
               "internalType": "string",
               "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "settlementType",
               "type": "string"
             },
             {
@@ -795,9 +974,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "confirmedLock",
@@ -814,9 +993,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "disagreeVotes",
@@ -833,9 +1012,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "finalized",
@@ -852,9 +1031,28 @@
         {
           "inputs": [
             {
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getCounterparty",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
             }
           ],
           "name": "getSettlement",
@@ -885,11 +1083,73 @@
                   "internalType": "uint256",
                   "name": "amount",
                   "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "payer",
+                  "type": "address"
                 }
               ],
               "internalType": "struct SettlementRegistry.Settlement",
               "name": "",
               "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlementById",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "_settlementId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "settlementType",
+              "type": "string"
+            },
+            {
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "metadata",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "getSettlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -903,6 +1163,25 @@
               "internalType": "string[]",
               "name": "",
               "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "name": "getSettlementsByPayer",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -924,9 +1203,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -966,6 +1245,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "name": "initAttest",
@@ -995,9 +1279,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -1032,9 +1316,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "proposalNonce",
@@ -1043,6 +1327,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
             }
           ],
           "stateMutability": "view",
@@ -1070,9 +1373,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "settlements",
@@ -1101,6 +1404,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "stateMutability": "view",
@@ -1272,8 +1580,8 @@
   "base": {
     "explorer_url": "https://base-sepolia.blockscout.com/tx/",
     "registry_addresses": {
-      "SettlementRegistry": "0x196c906B65c99769b47e7E3aff03A0A5c046bF9a",
-      "ValidatorRegistry": "0x17F2e15de3fC241a9840B33D3e85EdA8f15E7445"
+      "SettlementRegistry": "0x2D288208347e1b61278F1Ca4CCc3c1fC3D8E9d8D",
+      "ValidatorRegistry": "0x9B7D494a88f02cDe635E42447e40493453755E37"
     },
     "abis": {
       "SettlementRegistry": [
@@ -1293,6 +1601,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -1306,7 +1626,7 @@
             {
               "indexed": false,
               "internalType": "enum SettlementRegistry.Status",
-              "name": "status",
+              "name": "statusProposal",
               "type": "uint8"
             },
             {
@@ -1330,6 +1650,18 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -1361,6 +1693,12 @@
           "inputs": [
             {
               "indexed": true,
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": false,
               "internalType": "string",
               "name": "settlementId",
               "type": "string"
@@ -1378,9 +1716,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "agreeVotes",
@@ -1399,11 +1737,6 @@
             {
               "internalType": "string",
               "name": "settlementId",
-              "type": "string"
-            },
-            {
-              "internalType": "string",
-              "name": "settlementType",
               "type": "string"
             },
             {
@@ -1430,9 +1763,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "confirmedLock",
@@ -1449,9 +1782,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "disagreeVotes",
@@ -1468,9 +1801,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "finalized",
@@ -1487,9 +1820,28 @@
         {
           "inputs": [
             {
-              "internalType": "string",
-              "name": "settlementId",
-              "type": "string"
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getCounterparty",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "idHash",
+              "type": "bytes32"
             }
           ],
           "name": "getSettlement",
@@ -1520,11 +1872,73 @@
                   "internalType": "uint256",
                   "name": "amount",
                   "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "payer",
+                  "type": "address"
                 }
               ],
               "internalType": "struct SettlementRegistry.Settlement",
               "name": "",
               "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "settlementId",
+              "type": "string"
+            }
+          ],
+          "name": "getSettlementById",
+          "outputs": [
+            {
+              "internalType": "string",
+              "name": "_settlementId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "settlementType",
+              "type": "string"
+            },
+            {
+              "internalType": "enum SettlementRegistry.Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "metadata",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "getSettlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -1538,6 +1952,25 @@
               "internalType": "string[]",
               "name": "",
               "type": "string[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
+            }
+          ],
+          "name": "getSettlementsByPayer",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
             }
           ],
           "stateMutability": "view",
@@ -1559,9 +1992,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -1601,6 +2034,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "name": "initAttest",
@@ -1630,9 +2068,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             },
             {
               "internalType": "address",
@@ -1667,9 +2105,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "proposalNonce",
@@ -1678,6 +2116,25 @@
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "settlementIdHashes",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
             }
           ],
           "stateMutability": "view",
@@ -1705,9 +2162,9 @@
         {
           "inputs": [
             {
-              "internalType": "string",
+              "internalType": "bytes32",
               "name": "",
-              "type": "string"
+              "type": "bytes32"
             }
           ],
           "name": "settlements",
@@ -1736,6 +2193,11 @@
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "payer",
+              "type": "address"
             }
           ],
           "stateMutability": "view",

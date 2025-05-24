@@ -17,6 +17,7 @@
       const u_metadata = urlParams.get('metadata')
       const amount = urlParams.get('amount')
       const notify_email = urlParams.get('notify_email')
+      const payer = urlParams.get('payer')
 
       if (!linkToken) {
         alert("Missing link token");
@@ -36,7 +37,8 @@
               network: network,
               metadata:u_metadata,
               amount:amount,
-              notify_email:notify_email
+              notify_email:notify_email,
+              payer:payer
             })
           })
           .then(res => res.json())

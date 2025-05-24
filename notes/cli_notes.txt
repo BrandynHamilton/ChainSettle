@@ -13,11 +13,11 @@ sb-w7oqu40942591@personal.example.com
 
 ## github
 
-uv run python cli.py init-attest --settlement-type github --settlement-id a123bds --network ethereum --owner BrandynHamilton --repo liquid_domains --tag v1.0.0 --path static/onchain_valuation.js 
+uv run python cli.py init-attest --settlement-type github --settlement-id sadfv23a --network base --owner BrandynHamilton --repo liquid_domains --tag v1.0.2 --path static/onchain_valuation.js --payer 0x38979DFdB5d8FD76FAD4E797c4660e20015C6a84 --local
 
 ## plaid
 
-uv run python cli.py init-attest --settlement-type plaid --settlement-id 456 --amount 150000  --metadata P2P_Trade --network base 
+uv run python cli.py init-attest --settlement-type plaid --settlement-id 4567 --amount 150000  --metadata USDC_Purchase --network base --payer 0x38979DFdB5d8FD76FAD4E797c4660e20015C6a84 --local
 
 ## paypal
 
@@ -25,17 +25,18 @@ uv run python cli.py init-attest --settlement-type paypal --settlement-id 789abc
 
 ## docusign
 
-uv run python cli.py init-attest --settlement-type docusign --settlement-id docusign12345678912 --network ethereum --pdf-path "ChainSettle RWA Tokenization Agreement.pdf" --rwa-name rwa-345 --rwa-category private_credit --rwa-issuer bluerock --rwa-value-usd 100000 --rwa-jurisdiction us --local
+uv run python cli.py init-attest --settlement-type docusign --settlement-id docusign123456789123456 --network ethereum --pdf-path "ChainSettle RWA Tokenization Agreement.pdf" --rwa-name rwa-345 --rwa-category private_credit --rwa-issuer bluerock --rwa-value-usd 100000 --rwa-jurisdiction us --payer 0x38979DFdB5d8FD76FAD4E797c4660e20015C6a84 --local
 
 # Signing Commands (for docusign type)
 
-uv run python cli.py simulate-signing --envelope-id a7fbbd65-d72f-413b-93d6-cd5af181310c --recipient-id 1 --local
+uv run python cli.py simulate-signing --envelope-id 4fd202ef-3c8e-4aa5-bd13-40f2640b59af --recipient-id 1 --local
 
-uv run python cli.py simulate-signing --envelope-id a7fbbd65-d72f-413b-93d6-cd5af181310c --recipient-id 2 --local
+uv run python cli.py simulate-signing --envelope-id 4fd202ef-3c8e-4aa5-bd13-40f2640b59af --recipient-id 2 --local
 
 # Attest Commands 
 
-uv run python cli.py attest --settlement-id docusign12345678912 --local
+uv run python cli.py attest --settlement-id docusign123456789123456 --local
+
 
 
 

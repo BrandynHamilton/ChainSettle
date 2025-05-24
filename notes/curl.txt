@@ -2,6 +2,10 @@
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/settlements
 
+# Returns state of specific settlement
+
+curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/get_settlement/sadfv23a
+
 # Returns all registered validators 
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/validator_list
@@ -17,6 +21,8 @@ curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/health
 # Clears node cached data (requires key)
 
 curl -H "Content-Type: application/json" -X GET http://127.0.0.1:5045/api/clear_settlement_cache -H "X-API-KEY: %API_KEY%"
+
+curl -H "Content-Type: application/json" -X POST http://127.0.0.1:5045/api/clear_settlement_cache -H "X-API-KEY: letsclearthecache1856123
 
 
 

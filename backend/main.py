@@ -27,7 +27,8 @@ from chainsettle import (create_link_token,create_plaid_client, github_tag_exist
                          format_size,post_to_arweave,get_tx_status,wait_for_finalization_event,send_email_notification,
                          PayPalModule,add_validator, find_settlement_id_by_order, create_envelope, get_docusign_client,
                          SUPPORTED_ASSET_CATEGORIES, SUPPORTED_JURISDICTIONS, get_settlement_info,attest_util,update_settlement_info,
-                         validate_settlement_id_before_registration,init_attest_util,validate_settlement_id_before_attestation)
+                         validate_settlement_id_before_registration,init_attest_util,validate_settlement_id_before_attestation,
+                         normalize_payer)
                          
 load_dotenv()
 
@@ -193,6 +194,9 @@ def create_app():
         """
         order_id = request.args.get("token")
 
+        print(f'order_id: {order_id}')
+        print(f'at paypal success endpoint')
+
         if not order_id:
             return "Missing token (order ID)", 400
 
@@ -348,6 +352,7 @@ def create_app():
             network = data.get("network")
             settlement_type = data.get("settlement_type")
             notify_email = data.get('notify_email', None)
+            raw_payer = data.get("payer")
 
             # Github target data
             owner = data.get('owner')
@@ -387,6 +392,7 @@ def create_app():
             rwa_category = request.form.get('rwa_category')
             rwa_jurisdiction = request.form.get('rwa_jurisdiction')
             pdf_file = request.files.get("pdf")
+            raw_payer = request.form.get("payer")
 
         if settlement_type not in SUPPORTED_APIS:
             return jsonify({"error": f"Unsupported settlement type: {settlement_type}. Supported types are {SUPPORTED_APIS}"}), 400
@@ -405,6 +411,15 @@ def create_app():
 
         w3, account = network_func(network=network, ALCHEMY_API_KEY=ALCHEMY_API_KEY, PRIVATE_KEY=PRIVATE_KEY)
 
+        print(f'raw_payer: {raw_payer}')
+
+        try:
+            payer = normalize_payer(raw_payer, w3)
+        except ValueError as err:
+            return jsonify({"error": str(err)}), 
+    
+        print(f'Payer: {payer}')
+
         contract = w3.eth.contract(address=REGISTRY_ADDRESS, abi=REGISTRY_ABI)
 
         ok, msg = validate_settlement_id_before_registration(cache, settlement_id, contract)
@@ -419,7 +434,8 @@ def create_app():
             'metadata': metadata,
             'amount':amount,
             'notify_email': notify_email,
-            'status': "unverified"
+            'status': "unverified",
+            'payer': payer,
         }
 
         if settlement_type == 'github':
@@ -572,15 +588,19 @@ def create_app():
             tag_ok = github_tag_exists(owner, repo, tag)
             file_ok, size_bytes = github_file_exists(owner, repo, path, branch)
 
+            github_metadata = {
+                "size_bytes": size_bytes,
+            }
+
             try:
                 existing_metadata = str(settlement_info.get('metadata', ""))
             except:
                 existing_metadata = ""
 
             if existing_metadata.strip() != "":
-                combined_metadata = f"{existing_metadata} | size: {size_bytes} bytes"
-            else:
-                combined_metadata = f"size: {size_bytes} bytes"
+                github_metadata.update({"metadata": existing_metadata})
+
+            combined_metadata = json.dumps(github_metadata)
 
             response_payload.update({
                 "repo": f"{owner}/{repo}",
@@ -651,11 +671,11 @@ def create_app():
             print(f'status_enum: {status_enum}')
 
             rwa_metadata = {
-                "rwa_name":        rwa_name,
-                "rwa_issuer":      rwa_issuer,
-                "rwa_value_usd":   int(rwa_value_usd),
-                "rwa_category":    rwa_category,
-                "rwa_jurisdiction":rwa_jurisdiction,
+                "name":        rwa_name,
+                "issuer":      rwa_issuer,
+                "value_usd":   int(rwa_value_usd),
+                "category":    rwa_category,
+                "jurisdiction":rwa_jurisdiction,
                 "envelope_id":     envelope_id,
             }
 
@@ -694,15 +714,19 @@ def create_app():
             })
             print(f'settlement_info:{settlement_info}')
 
+            paypal_metadata = {
+                "recipient_email": recipient_email,
+            }
+
             try:
                 existing_metadata = str(settlement_info.get('metadata', ""))
             except:
                 existing_metadata = ""
 
             if existing_metadata.strip() != "":
-                combined_metadata = f"{existing_metadata} | recipient: {recipient_email}"
-            else:
-                combined_metadata = f"recipient: {recipient_email}"
+                paypal_metadata.update({"metadata": existing_metadata})
+
+            combined_metadata = json.dumps(paypal_metadata)
 
             paypal = PayPalModule(sandbox=True)  # uses PAYPAL_CLIENT_ID/SECRET from env
             # Create order

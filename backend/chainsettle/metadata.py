@@ -17,3 +17,5 @@ SUPPORTED_APIS = ['plaid', 'github', 'paypal', 'docusign']
 SUPPORTED_JURISDICTIONS = ['us', 'uk', 'eu', 'pa', 'mx', 'ng', 'other']
 
 SUPPORTED_ASSET_CATEGORIES = ['real_estate', 'private_credit', 'commodity', 'other']
+
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
